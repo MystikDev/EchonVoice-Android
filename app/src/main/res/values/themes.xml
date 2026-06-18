@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Pure-Compose app: the Activity theme only needs a dark, action-bar-less
+         window. Material3 styling lives in Compose (EchonTheme). -->
+    <style name="Theme.Echon" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/echon_bg</item>
+        <item name="android:statusBarColor">@color/echon_bg</item>
+        <item name="android:navigationBarColor">@color/echon_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

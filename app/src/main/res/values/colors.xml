@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Echon brand palette, mirrored from the iOS dark theme + wrapper. -->
+    <color name="echon_bg">#0D0F1A</color>
+    <color name="echon_surface">#161A2B</color>
+    <color name="echon_primary">#4F46E5</color>
+    <color name="echon_primary_dark">#3730A3</color>
+    <color name="echon_on_primary">#FFFFFF</color>
+    <color name="white">#FFFFFF</color>
+</resources>

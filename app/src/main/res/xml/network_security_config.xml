@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Defense-in-depth pinning at the platform layer. The primary pinning is the
+  programmatic OkHttp CertificatePinner (TlsPinning.kt), which also covers the
+  WebSocket and LiveKit traffic; this config mirrors it so any stray platform
+  HTTP also fails closed. Pins the long-lived ISRG roots (X1 + X2) rather than
+  rotating Let's Encrypt intermediates, matching the iOS client.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">echon-voice.com</domain>
+        <pin-set expiration="2027-01-01">
+            <!-- ISRG Root X1 -->
+            <pin digest="SHA-256">C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=</pin>
+            <!-- ISRG Root X2 -->
+            <pin digest="SHA-256">diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=</pin>
+        </pin-set>
+    </domain-config>
+</network-security-config>
