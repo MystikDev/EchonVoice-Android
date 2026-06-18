@@ -37,6 +37,8 @@ android {
     }
 
     compileOptions {
+        // Enables java.time (and other newer APIs) on minSdk 24 via desugaring.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -88,6 +90,8 @@ dependencies {
     implementation(libs.androidx.security.crypto)
 
     implementation(libs.livekit.android)
+
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     testImplementation(libs.junit)
     testImplementation(libs.okhttp)

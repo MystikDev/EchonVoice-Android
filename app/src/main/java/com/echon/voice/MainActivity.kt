@@ -4,20 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import com.echon.voice.core.designsystem.EchonTheme
+import com.echon.voice.nav.AppRoot
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
- * Single-activity Compose host. Phase 0 renders a placeholder; the auth-gated
- * navigation graph lands in Phase 1.
+ * Single-activity Compose host. [AppRoot] routes on the auth phase
+ * (loading → signedOut → needsEula → signedIn).
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -26,17 +19,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             EchonTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
-                    PlaceholderScreen(Modifier.padding(padding))
-                }
+                AppRoot()
             }
         }
-    }
-}
-
-@Composable
-private fun PlaceholderScreen(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Echon")
     }
 }
