@@ -26,7 +26,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,9 +37,10 @@ import coil.compose.AsyncImage
 import com.echon.voice.core.designsystem.Avatar
 import com.echon.voice.core.designsystem.EchonColors
 import com.echon.voice.core.realtime.RealtimeStore
+import com.echon.voice.feature.voice.VoiceStore
 import com.echon.voice.model.ChannelKind
-import com.echon.voice.model.Member
 import com.echon.voice.model.Server
+import com.echon.voice.model.VoiceParticipantState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -49,16 +49,15 @@ import javax.inject.Inject
 class ServersViewModel @Inject constructor(
     private val servers: ServersStore,
     realtime: RealtimeStore,
+    voice: VoiceStore,
 ) : ViewModel() {
     val serverList = servers.servers
     val selectedServerId = servers.selectedServerId
     val channelsByServer = servers.channelsByServer
-    val membersByServer = servers.membersByServer
+    val voiceOccupancy = voice.occupancy
     val unread = realtime.unreadChannelIds
-    val presence = realtime.presence
 
     fun select(serverId: String) = viewModelScope.launch { servers.select(serverId) }
-    fun channelsFor(serverId: String?) = servers.channelsFor(serverId)
 }
 
 @Composable
@@ -72,8 +71,7 @@ fun ServersScreen(
     val servers by viewModel.serverList.collectAsStateWithLifecycle()
     val selectedId by viewModel.selectedServerId.collectAsStateWithLifecycle()
     val channelsByServer by viewModel.channelsByServer.collectAsStateWithLifecycle()
-    val membersByServer by viewModel.membersByServer.collectAsStateWithLifecycle()
-    val presence by viewModel.presence.collectAsStateWithLifecycle()
+    val voiceOccupancy by viewModel.voiceOccupancy.collectAsStateWithLifecycle()
     val unread by viewModel.unread.collectAsStateWithLifecycle()
 
     var showJoin by remember { mutableStateOf(false) }
@@ -124,23 +122,23 @@ fun ServersScreen(
                 ) { onOpenChannel(channel.id, channel.name ?: "channel") }
             }
             if (voice.isNotEmpty()) {
-                item { SectionLabel("Voice") }
+                item { SectionLabel("Voice channels") }
                 items(voice, key = { it.id }) { channel ->
-                    ChannelRow(prefix = "🔊", name = channel.name ?: "voice", hasUnread = false) {
-                        onOpenVoice(channel.id, channel.name ?: "voice")
+                    Column {
+                        val occupants = voiceOccupancy[channel.id] ?: emptyList()
+                        ChannelRow(
+                            prefix = "🔊",
+                            name = channel.name ?: "voice",
+                            hasUnread = false,
+                            trailing = if (occupants.isNotEmpty()) "${occupants.size}" else null,
+                        ) { onOpenVoice(channel.id, channel.name ?: "voice") }
+                        occupants.forEach { participant ->
+                            VoiceParticipantRow(
+                                participant = participant,
+                                onClick = { participant.user?.let(onOpenProfile) },
+                            )
+                        }
                     }
-                }
-            }
-
-            val members = membersByServer[selectedId] ?: emptyList()
-            if (members.isNotEmpty()) {
-                item { SectionLabel("Members — ${members.size}") }
-                items(members, key = { it.user.id }) { member ->
-                    MemberRow(
-                        member = member,
-                        online = presence[member.user.id] == "online",
-                        onClick = { onOpenProfile(member.user) },
-                    )
                 }
             }
         }
@@ -175,7 +173,7 @@ private fun ServerIcon(server: Server, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ChannelRow(prefix: String, name: String, hasUnread: Boolean, onClick: () -> Unit) {
+private fun ChannelRow(prefix: String, name: String, hasUnread: Boolean, trailing: String? = null, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -191,39 +189,36 @@ private fun ChannelRow(prefix: String, name: String, hasUnread: Boolean, onClick
             modifier = Modifier.weight(1f),
             fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.Normal,
         )
+        if (trailing != null) {
+            Text(trailing, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         if (hasUnread) {
             Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(EchonColors.Primary))
         }
     }
 }
 
+/** A user currently connected to a voice channel (indented under the channel). */
 @Composable
-private fun MemberRow(member: Member, online: Boolean, onClick: () -> Unit) {
+private fun VoiceParticipantRow(participant: VoiceParticipantState, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(start = 30.dp, end = 12.dp, top = 3.dp, bottom = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box {
-            Avatar(user = member.user, size = 32.dp)
-            // Presence dot (online only).
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(10.dp)
-                    .clip(CircleShape)
-                    .background(if (online) Color(0xFF3BA55D) else MaterialTheme.colorScheme.surface),
-            )
-        }
+        Avatar(user = participant.user, size = 24.dp)
         Text(
-            member.displayName,
+            participant.user?.username ?: "Unknown",
             modifier = Modifier.weight(1f),
-            color = if (online) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (participant.muted == true) Text("🔇", style = MaterialTheme.typography.labelSmall)
+        if (participant.screen == true) Text("🖥️", style = MaterialTheme.typography.labelSmall)
     }
 }
 

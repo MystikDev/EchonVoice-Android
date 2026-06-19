@@ -7,6 +7,7 @@ import com.echon.voice.feature.dms.DMsStore
 import com.echon.voice.feature.friends.FriendsStore
 import com.echon.voice.feature.moderation.BlocksStore
 import com.echon.voice.feature.servers.ServersStore
+import com.echon.voice.feature.voice.VoiceStore
 import com.echon.voice.model.ChannelKind
 import com.echon.voice.model.ChatChannelKind
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +38,7 @@ class RealtimeStore @Inject constructor(
     private val blocks: BlocksStore,
     private val dms: DMsStore,
     private val friends: FriendsStore,
+    private val voice: VoiceStore,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     private val _isConnected = MutableStateFlow(false)
@@ -163,7 +165,7 @@ class RealtimeStore @Inject constructor(
             is WsEvent.UserBlocked -> blocks.applyRemote(event.userId, true)
             is WsEvent.UserUnblocked -> blocks.applyRemote(event.userId, false)
             is WsEvent.FriendsChanged -> scope.launch { runCatching { friends.load() } }
-            is WsEvent.VoiceStateChanged,
+            is WsEvent.VoiceStateChanged -> voice.refresh()
             is WsEvent.ReadStateUpdated,
             is WsEvent.Ready,
             is WsEvent.Unknown,

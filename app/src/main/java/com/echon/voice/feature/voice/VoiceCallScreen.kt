@@ -94,7 +94,9 @@ fun VoiceCallScreen(
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         if (granted) viewModel.join() else permission.launch(Manifest.permission.RECORD_AUDIO)
     }
-    DisposableEffect(Unit) { onDispose { viewModel.leave() } }
+    // The call persists when navigating away (Discord-style) so you stay connected
+    // while browsing; it ends only via the explicit Leave button. join() is a no-op
+    // if already connected to this channel.
 
     Column(
         modifier = Modifier
