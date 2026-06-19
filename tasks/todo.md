@@ -32,6 +32,10 @@ Each phase ends runnable + verified on emulator/device with the demo account, th
 - [x] **Verify (emulator, demo account):** login → Signed in (MystikDev#1838); force-stop→relaunch restores session; sign-out → Login; Register renders with DOB+ToS gate
 - [x] Commit (ccb195d)
 
+## Phase 2 — Moderation  ✅ done (commit 68d7d61)
+- [x] BlocksStore (optimistic, render-time filter), ReportSheet, BlockedUsersScreen, account deletion, Settings
+- [x] Verified on emulator: blocked list loads live (Phrosen#2963); delete dialog gates; nav works
+
 ## Phase 2 — Moderation (early): report/block/blocked-list/instant filter/account deletion
 ## Phase 3 — Servers/channels + realtime chat (WS, reconcile, attachments)
 ## Phase 4 — DMs, friends, invites, profiles, members, presence

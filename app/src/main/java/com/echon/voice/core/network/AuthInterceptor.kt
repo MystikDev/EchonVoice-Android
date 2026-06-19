@@ -20,7 +20,9 @@ class AuthInterceptor @Inject constructor(
             return chain.proceed(request.newBuilder().removeHeader(NO_AUTH_HEADER).build())
         }
         val token = session.accessToken
-        val authed = if (token != null) {
+        // Never leak the bearer to third-party hosts (e.g. a non-echon image URL).
+        val sameHost = request.url.host == TlsPinning.HOST || request.url.host.endsWith(".${TlsPinning.HOST}")
+        val authed = if (token != null && sameHost) {
             request.newBuilder().header("Authorization", "Bearer $token").build()
         } else {
             request
