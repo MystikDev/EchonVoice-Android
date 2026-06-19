@@ -4,21 +4,47 @@ This directory holds everything the **web team** needs to host the Android app
 directly from echon-voice.com, plus the in-app updater's contract. No Google Play
 involved; the app is signed with the Echon developer key (see "Signing" below).
 
-## What to host
+## How distribution works (GitHub Releases)
 
-| File | Suggested URL | Notes |
-|------|---------------|-------|
-| Signed APK | `https://echon-voice.com/app/echon-latest.apk` | The build artifact (`~/.cache/echon-android-build/app/outputs/apk/release/app-release.apk` — build output is relocated out of the iCloud-synced repo). Keep this URL stable; overwrite on each release. |
-| Update manifest | `https://echon-voice.com/app/latest.json` | See `latest.json`. The app polls this to detect updates. |
-| Download page | `https://echon-voice.com/download` | See `download.html` (drop-in, restyle to taste). |
+The installer is a **GitHub Release asset** — not committed into the repo (a 44 MB
+binary would bloat history). The website link and the in-app updater both pull from
+GitHub, so it's transparent to users.
 
-### Critical server config
-- Serve the APK with `Content-Type: application/vnd.android.package-archive`.
-- Serve `latest.json` with `Content-Type: application/json` and **no aggressive caching**
-  (e.g. `Cache-Control: max-age=60`) so updates are seen promptly.
-- HTTPS only. The app **pins** echon-voice.com to the ISRG roots, so the APK and
-  manifest fetches go over the pinned client — keep the cert chain under Let's Encrypt
-  (ISRG X1/X2), same as the API.
+| Artifact | URL | Who serves it |
+|----------|-----|---------------|
+| Signed APK | `https://github.com/<owner>/<repo>/releases/latest/download/echon-release.apk` | GitHub Releases |
+| Update manifest | `https://raw.githubusercontent.com/<owner>/<repo>/main/distribution/latest.json` | GitHub (raw, committed) |
+| Download page | `https://echon-voice.com/download` → links to the APK URL above | web team hosts `download.html` |
+
+The repo slug is set in two places (update both if it changes): `distribution/latest.json`
++ `download.html`, and `UpdateConfig` in `core/update/ReleaseManifestSource.kt`.
+
+### Cutting a release (one push)
+1. Bump `versionCode` + `versionName` in `app/build.gradle.kts` and `distribution/latest.json`
+   (set `notes`), commit.
+2. `git tag vX.Y.Z && git push --tags`.
+3. The `Release APK` GitHub Action builds the signed APK and attaches `echon-release.apk`
+   to the release. Existing installs detect the new `versionCode` and prompt to update.
+
+> **Enable the Action first:** it ships here as `distribution/github-release-workflow.yml`
+> (pushing into `.github/workflows/` needs the `workflow` token scope). To activate it,
+> move it to `.github/workflows/release.yml` and push after
+> `gh auth refresh -h github.com -s workflow` — or just add it through the GitHub web UI.
+> Until then, releases can be cut manually: `gh release create vX.Y.Z echon-release.apk`.
+
+**CI secrets required** (Settings → Secrets → Actions): `ECHON_KEYSTORE_BASE64`
+(`base64 -i app/echon-release.jks`), `ECHON_KEYSTORE_PASSWORD`, `ECHON_KEY_ALIAS`,
+`ECHON_KEY_PASSWORD`.
+
+### Integrity
+The APK and manifest are fetched over standard HTTPS (GitHub host), not the
+echon-voice.com pinned client. Integrity is guaranteed by Android's package
+verifier: an update must be signed with the **same release key** as the installed
+app, so a tampered APK is rejected at install. The app/API traffic stays cert-pinned.
+
+### Website download page
+`download.html` is a drop-in; the web team hosts it at `/download` and the button
+points at the GitHub `releases/latest/download/echon-release.apk` URL.
 
 ## Update manifest contract (`latest.json`)
 

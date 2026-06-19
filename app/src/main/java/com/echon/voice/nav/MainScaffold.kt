@@ -54,6 +54,8 @@ fun MainScaffold(
     onOpenMembers: (serverId: String) -> Unit,
     onOpenProfile: (User) -> Unit,
     onOpenBlockedUsers: () -> Unit,
+    onOpenEditProfile: () -> Unit,
+    onOpenChangePassword: () -> Unit,
     @Suppress("UNUSED_PARAMETER") viewModel: MainViewModel = hiltViewModel(),
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -77,7 +79,11 @@ fun MainScaffold(
                 )
                 1 -> DMListScreen(onOpenDm = { id, name -> onOpenChannel(id, name, "dm") })
                 2 -> FriendsScreen(onOpenProfile = onOpenProfile)
-                else -> SettingsScreen(onOpenBlockedUsers = onOpenBlockedUsers)
+                else -> SettingsScreen(
+                    onOpenBlockedUsers = onOpenBlockedUsers,
+                    onOpenEditProfile = onOpenEditProfile,
+                    onOpenChangePassword = onOpenChangePassword,
+                )
             }
         }
     }

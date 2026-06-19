@@ -14,6 +14,7 @@ import okhttp3.Request
 import java.io.File
 import java.io.IOException
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 
 /**
@@ -25,7 +26,7 @@ import javax.inject.Singleton
 @Singleton
 class ApkInstaller @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val client: OkHttpClient,
+    @Named("plain") private val client: OkHttpClient,
 ) {
     /** Whether the app is currently allowed to request package installs (API 26+). */
     fun canInstall(): Boolean =

@@ -73,6 +73,11 @@ class AuthStore @Inject constructor(
         refreshMe()
     }
 
+    /** Adopt the updated user returned by PATCH /v1/me/profile. */
+    fun applyUpdatedUser(user: User) {
+        _currentUser.value = user
+    }
+
     suspend fun acceptTos() {
         apiCall { api.acceptTos() }
         _currentUser.value = _currentUser.value?.copy(tosAccepted = true)

@@ -42,6 +42,8 @@ fun SignedInNavHost() {
                 onOpenMembers = { nav.navigate("members/$it") },
                 onOpenProfile = { profileUser = it },
                 onOpenBlockedUsers = { nav.navigate("blocked") },
+                onOpenEditProfile = { nav.navigate("edit_profile") },
+                onOpenChangePassword = { nav.navigate("change_password") },
             )
         }
         composable(
@@ -71,6 +73,12 @@ fun SignedInNavHost() {
         }
         composable("blocked") {
             BlockedUsersScreen(onBack = { nav.popBackStack() })
+        }
+        composable("edit_profile") {
+            com.echon.voice.feature.settings.ProfileEditScreen(onBack = { nav.popBackStack() })
+        }
+        composable("change_password") {
+            com.echon.voice.feature.settings.ChangePasswordScreen(onBack = { nav.popBackStack() })
         }
     }
 

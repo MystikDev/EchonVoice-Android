@@ -43,6 +43,21 @@ object NetworkModule {
             .addInterceptor(logging())
             .build()
 
+    /**
+     * Plain HTTPS client (no echon pinning, no auth) for update checks/downloads,
+     * which are hosted on GitHub Releases — a different host than the pinned API.
+     * Integrity of the downloaded APK is guaranteed by Android's signature check
+     * (same release key as the installed app).
+     */
+    @Provides
+    @Singleton
+    @Named("plain")
+    fun providePlainClient(): OkHttpClient =
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .build()
+
     /** Primary pinned client: bearer attach + 401 refresh/retry. */
     @Provides
     @Singleton

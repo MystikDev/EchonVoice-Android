@@ -1,0 +1,52 @@
+name: Release APK
+
+# Builds the signed release APK and attaches it to a GitHub Release whenever a
+# v* tag is pushed. The website download link and the in-app updater both point
+# at this release's `echon-release.apk` asset, so cutting a release is: bump
+# versionCode/versionName + distribution/latest.json, commit, then `git tag vX && git push --tags`.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Restore signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ECHON_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ECHON_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ECHON_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ECHON_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > app/echon-release.jks
+          cat > keystore.properties <<EOF
+          storeFile=echon-release.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: Build signed release APK
+        run: ./gradlew :app:assembleRelease
+
+      - name: Stage APK with stable name
+        run: cp app/build/outputs/apk/release/app-release.apk echon-release.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: echon-release.apk
+          generate_release_notes: true

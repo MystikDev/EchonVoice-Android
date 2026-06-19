@@ -80,6 +80,12 @@ interface EchonApi {
     @POST("v1/me/delete")
     suspend fun deleteAccount(@Body body: DeleteAccountRequest)
 
+    @PATCH("v1/me/profile")
+    suspend fun updateProfile(@Body body: com.echon.voice.model.ProfileUpdateRequest): User
+
+    @POST("v1/me/password")
+    suspend fun changePassword(@Body body: com.echon.voice.model.ChangePasswordRequest)
+
     // --- Servers & channels ---
 
     @GET("v1/me/servers")
@@ -149,14 +155,6 @@ interface EchonApi {
 
     @POST("v1/ws/ticket")
     suspend fun wsTicket(): TicketResponse
-
-    /**
-     * Direct-download update manifest (public, no bearer). Relative URL resolves
-     * against the base host: https://echon-voice.com/app/latest.json.
-     */
-    @GET
-    @Headers("${AuthInterceptor.NO_AUTH_HEADER}: 1")
-    suspend fun latestRelease(@Url url: String = "app/latest.json"): AppRelease
 
     // --- DMs ---
 

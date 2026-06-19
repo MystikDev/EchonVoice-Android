@@ -1,7 +1,7 @@
 {
   "versionCode": 1,
   "versionName": "2.0.0",
-  "apkUrl": "https://echon-voice.com/app/echon-latest.apk",
+  "apkUrl": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "minSupportedVersionCode": 1,
   "mandatory": false,
   "notes": "Initial direct-download release."

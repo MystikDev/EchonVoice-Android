@@ -82,6 +82,8 @@ class SettingsViewModel @Inject constructor(
 @Composable
 fun SettingsScreen(
     onOpenBlockedUsers: () -> Unit,
+    onOpenEditProfile: () -> Unit = {},
+    onOpenChangePassword: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val user by viewModel.currentUser.collectAsStateWithLifecycle()
@@ -107,6 +109,10 @@ fun SettingsScreen(
             }
             HorizontalDivider()
 
+            SettingsRow(title = "Edit profile", onClick = onOpenEditProfile)
+            HorizontalDivider()
+            SettingsRow(title = "Change password", onClick = onOpenChangePassword)
+            HorizontalDivider()
             SettingsRow(title = "Blocked users", onClick = onOpenBlockedUsers)
             HorizontalDivider()
 
