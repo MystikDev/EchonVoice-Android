@@ -1,8 +1,8 @@
 {
-  "version_code": 4,
-  "version_name": "2.0.3",
+  "version_code": 5,
+  "version_name": "2.0.4",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Automatic silent self-updates (Android 12+); server member list in the server view."
+  "notes": "Silent updates on launch; 10-minute update prompt while signed in."
 }
