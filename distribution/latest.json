@@ -1,8 +1,8 @@
 {
-  "versionCode": 2,
-  "versionName": "2.0.1",
+  "versionCode": 4,
+  "versionName": "2.0.3",
   "apkUrl": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "minSupportedVersionCode": 1,
   "mandatory": false,
-  "notes": "Server members now appear in the server view (with online presence)."
+  "notes": "Automatic silent self-updates (Android 12+); server member list in the server view."
 }

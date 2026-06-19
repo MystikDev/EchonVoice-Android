@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Direct-download self-update: install the downloaded APK. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Silent self-update without a confirmation dialog (Android 12+). -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <!-- Voice (LiveKit). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
@@ -38,6 +40,12 @@
             android:name=".feature.voice.CallForegroundService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- Receives PackageInstaller results; surfaces the system confirm on
+             devices/cases where a silent self-update isn't permitted. -->
+        <receiver
+            android:name=".core.update.InstallResultReceiver"
+            android:exported="false" />
 
         <!-- Shares the downloaded update APK with the system installer. -->
         <provider

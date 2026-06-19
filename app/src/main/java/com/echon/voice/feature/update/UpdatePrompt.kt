@@ -1,16 +1,21 @@
 package com.echon.voice.feature.update
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -23,92 +28,87 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * Auto-updater. On launch it checks the manifest and, when a newer build exists,
+ * silently downloads and installs it (no taps on Android 12+ for a same-key
+ * self-update). The only UI is a one-time request to allow installs if that
+ * permission hasn't been granted, and an unobtrusive "updating" indicator.
+ */
 @HiltViewModel
 class UpdateViewModel @Inject constructor(
     private val checker: UpdateChecker,
     private val installer: ApkInstaller,
 ) : ViewModel() {
-    var status by mutableStateOf<UpdateStatus>(UpdateStatus.UpToDate)
+    enum class Phase { Idle, Downloading, NeedsPermission }
+
+    var phase by mutableStateOf(Phase.Idle)
         private set
-    var downloading by mutableStateOf(false)
-        private set
-    var error by mutableStateOf<String?>(null)
-        private set
-    var dismissed by mutableStateOf(false)
-        private set
+
+    private var pendingApkUrl: String? = null
 
     init {
-        viewModelScope.launch { status = checker.check() }
+        viewModelScope.launch {
+            val status = checker.check()
+            if (status is UpdateStatus.Available) autoUpdate(status.release.apkUrl)
+        }
     }
 
-    fun update() {
-        val available = status as? UpdateStatus.Available ?: return
+    private suspend fun autoUpdate(apkUrl: String) {
         if (!installer.canInstall()) {
-            // Bounce to settings to grant "install unknown apps", then retry on return.
-            installer.requestInstallPermission()
+            pendingApkUrl = apkUrl
+            phase = Phase.NeedsPermission
             return
         }
-        viewModelScope.launch {
-            downloading = true
-            error = null
-            try {
-                val apk = installer.download(available.release.apkUrl)
-                installer.launchInstall(apk)
-            } catch (e: Exception) {
-                error = "Update failed to download. Please try again."
-            } finally {
-                downloading = false
-            }
+        phase = Phase.Downloading
+        try {
+            val apk = installer.download(apkUrl)
+            installer.install(apk) // silent on API 31+; system installer otherwise
+        } catch (e: Exception) {
+            // Never block the app on a failed update.
+        } finally {
+            phase = Phase.Idle
         }
     }
 
-    fun dismiss() {
-        dismissed = true
+    fun grantPermission() {
+        phase = Phase.Idle
+        installer.requestInstallPermission() // one-time; auto-update proceeds next launch
+    }
+
+    fun dismissPermission() {
+        phase = Phase.Idle
     }
 }
 
-/**
- * Overlay shown when the hosted manifest advertises a newer build. Mandatory
- * updates (below minSupportedVersionCode) can't be dismissed.
- */
 @Composable
 fun UpdatePrompt(viewModel: UpdateViewModel = hiltViewModel()) {
-    val status = viewModel.status
-    if (status !is UpdateStatus.Available) return
-    if (viewModel.dismissed && !status.mandatory) return
+    when (viewModel.phase) {
+        UpdateViewModel.Phase.Downloading -> UpdatingIndicator()
+        UpdateViewModel.Phase.NeedsPermission -> AllowInstallDialog(
+            onAllow = viewModel::grantPermission,
+            onDismiss = viewModel::dismissPermission,
+        )
+        UpdateViewModel.Phase.Idle -> Unit
+    }
+}
 
+@Composable
+private fun UpdatingIndicator() {
+    Snackbar(modifier = Modifier.padding(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+            Text("Updating Echon…")
+        }
+    }
+}
+
+@Composable
+private fun AllowInstallDialog(onAllow: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
-        onDismissRequest = { if (!status.mandatory) viewModel.dismiss() },
-        title = { Text("Update available") },
-        text = {
-            Text(
-                buildString {
-                    append("Version ${status.release.versionName} is available.")
-                    status.release.notes?.let { append("\n\n$it") }
-                    viewModel.error?.let { append("\n\n$it") }
-                },
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = viewModel::update, enabled = !viewModel.downloading) {
-                if (viewModel.downloading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                Text(if (status.mandatory) "Update now" else "Update")
-            }
-        },
-        dismissButton = {
-            if (!status.mandatory) {
-                TextButton(onClick = viewModel::dismiss, enabled = !viewModel.downloading) {
-                    Text("Later")
-                }
-            }
-        },
+        onDismissRequest = onDismiss,
+        title = { Text("Keep Echon up to date") },
+        text = { Text("Allow Echon to install its own updates so it can update automatically. You'll only need to grant this once.") },
+        confirmButton = { TextButton(onClick = onAllow) { Text("Allow") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Not now") } },
     )
 }
