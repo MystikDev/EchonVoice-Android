@@ -16,6 +16,7 @@ import com.echon.voice.feature.moderation.BlockedUsersScreen
 import com.echon.voice.feature.moderation.ReportSheet
 import com.echon.voice.feature.moderation.ReportTarget
 import com.echon.voice.feature.profiles.UserProfileSheet
+import com.echon.voice.feature.voice.VoiceCallScreen
 import com.echon.voice.model.User
 
 /**
@@ -37,6 +38,7 @@ fun SignedInNavHost() {
         composable("main") {
             MainScaffold(
                 onOpenChannel = { id, name, kind -> nav.navigate("chat/$id?channelName=$name&channelKind=$kind") },
+                onOpenVoice = { id, name -> nav.navigate("voice/$id?channelName=$name") },
                 onOpenMembers = { nav.navigate("members/$it") },
                 onOpenProfile = { profileUser = it },
                 onOpenBlockedUsers = { nav.navigate("blocked") },
@@ -57,6 +59,15 @@ fun SignedInNavHost() {
             arguments = listOf(navArgument("serverId") { type = NavType.StringType }),
         ) {
             MembersScreen(onBack = { nav.popBackStack() }, onOpenProfile = { profileUser = it })
+        }
+        composable(
+            route = "voice/{channelId}?channelName={channelName}",
+            arguments = listOf(
+                navArgument("channelId") { type = NavType.StringType },
+                navArgument("channelName") { type = NavType.StringType; defaultValue = "voice" },
+            ),
+        ) {
+            VoiceCallScreen(onBack = { nav.popBackStack() })
         }
         composable("blocked") {
             BlockedUsersScreen(onBack = { nav.popBackStack() })

@@ -43,6 +43,11 @@ Each phase ends runnable + verified on emulator/device with the demo account, th
 - [x] Verified live: servers/channels load, history paginates, message sent+confirmed, image attachments render, block filter active
 
 ## Phase 3 — Servers/channels + realtime chat (WS, reconcile, attachments)
+## Phase 4 — DMs, friends, invites, profiles, members  ✅ done (commit 0b19554)
+- [x] DMsStore/FriendsStore, DMListScreen, FriendsScreen, UserProfileSheet, MembersScreen, invite sheets
+- [x] 4-tab MainScaffold; chat route carries channelKind (DMs reuse ChatScreen); shared profile/report sheets
+- [x] Verified live: Friends lists Echon01#6413; DMs opens Echon01 DM with history
+
 ## Phase 4 — DMs, friends, invites, profiles, members, presence
 ## Phase 5 — LiveKit voice + view-only screen share
 ## Phase 6 — Settings polish, theming, hardening, Play release prep

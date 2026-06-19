@@ -201,4 +201,15 @@ interface EchonApi {
 
     @GET("v1/servers/{id}/members")
     suspend fun serverMembers(@Path("id") serverId: String): MembersResponse
+
+    // --- Voice ---
+
+    @GET("v1/servers/{id}/voice")
+    suspend fun serverVoice(@Path("id") serverId: String): Map<String, List<com.echon.voice.model.VoiceParticipantState>>
+
+    @POST("v1/channels/{id}/voice/join")
+    suspend fun joinVoice(@Path("id") channelId: String): com.echon.voice.model.VoiceJoinResponse
+
+    @POST("v1/channels/{id}/voice/leave")
+    suspend fun leaveVoice(@Path("id") channelId: String)
 }

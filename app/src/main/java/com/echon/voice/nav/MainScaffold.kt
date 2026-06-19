@@ -50,6 +50,7 @@ class MainViewModel @Inject constructor(
 @Composable
 fun MainScaffold(
     onOpenChannel: (channelId: String, name: String, kind: String) -> Unit,
+    onOpenVoice: (channelId: String, name: String) -> Unit,
     onOpenMembers: (serverId: String) -> Unit,
     onOpenProfile: (User) -> Unit,
     onOpenBlockedUsers: () -> Unit,
@@ -71,6 +72,7 @@ fun MainScaffold(
             when (tab) {
                 0 -> ServersScreen(
                     onOpenChannel = { id, name -> onOpenChannel(id, name, "server") },
+                    onOpenVoice = onOpenVoice,
                     onOpenMembers = onOpenMembers,
                 )
                 1 -> DMListScreen(onOpenDm = { id, name -> onOpenChannel(id, name, "dm") })

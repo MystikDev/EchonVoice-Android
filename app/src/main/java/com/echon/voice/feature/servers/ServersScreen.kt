@@ -59,6 +59,7 @@ class ServersViewModel @Inject constructor(
 @Composable
 fun ServersScreen(
     onOpenChannel: (channelId: String, channelName: String) -> Unit,
+    onOpenVoice: (channelId: String, channelName: String) -> Unit,
     onOpenMembers: (serverId: String) -> Unit,
     viewModel: ServersViewModel = hiltViewModel(),
 ) {
@@ -117,7 +118,9 @@ fun ServersScreen(
             if (voice.isNotEmpty()) {
                 item { SectionLabel("Voice") }
                 items(voice, key = { it.id }) { channel ->
-                    ChannelRow(prefix = "🔊", name = channel.name ?: "voice", hasUnread = false) { }
+                    ChannelRow(prefix = "🔊", name = channel.name ?: "voice", hasUnread = false) {
+                        onOpenVoice(channel.id, channel.name ?: "voice")
+                    }
                 }
             }
         }
