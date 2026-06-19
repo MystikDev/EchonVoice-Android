@@ -6,3 +6,12 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.hilt) apply false
 }
+
+// This repo lives under iCloud-synced ~/Documents, which creates "<file> 2.ext"
+// conflicted copies of churny build artifacts and intermittently breaks resource
+// parsing. Redirect all build output outside the synced tree.
+val externalBuildRoot = File(System.getProperty("user.home"), ".cache/echon-android-build")
+rootProject.layout.buildDirectory.set(File(externalBuildRoot, "root"))
+subprojects {
+    layout.buildDirectory.set(File(externalBuildRoot, project.name))
+}

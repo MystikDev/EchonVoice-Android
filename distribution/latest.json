@@ -1,0 +1,8 @@
+{
+  "versionCode": 1,
+  "versionName": "2.0.0",
+  "apkUrl": "https://echon-voice.com/app/echon-latest.apk",
+  "minSupportedVersionCode": 1,
+  "mandatory": false,
+  "notes": "Initial direct-download release."
+}

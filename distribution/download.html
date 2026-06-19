@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Get Echon for Android</title>
+  <meta name="description" content="Download the Echon app for Android." />
+  <style>
+    :root {
+      --bg: #0d0f1a;
+      --surface: #161a2b;
+      --primary: #4f46e5;
+      --text: #e7e9f2;
+      --muted: #9aa0b5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 40px 32px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+    }
+    .logo {
+      width: 72px; height: 72px; margin: 0 auto 20px;
+      border-radius: 18px; background: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+    }
+    h1 { font-size: 1.6rem; margin: 0 0 6px; }
+    .sub { color: var(--muted); margin: 0 0 28px; }
+    .btn {
+      display: inline-block; width: 100%;
+      background: var(--primary); color: #fff; text-decoration: none;
+      font-weight: 600; font-size: 1.05rem;
+      padding: 16px 24px; border-radius: 999px; border: none; cursor: pointer;
+    }
+    .btn:active { transform: translateY(1px); }
+    .meta { color: var(--muted); font-size: 0.85rem; margin-top: 14px; }
+    .steps {
+      text-align: left; margin-top: 28px; padding-top: 24px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .steps h2 { font-size: 0.95rem; margin: 0 0 12px; }
+    .steps ol { margin: 0; padding-left: 20px; color: var(--muted); line-height: 1.7; font-size: 0.9rem; }
+    .note { margin-top: 20px; font-size: 0.8rem; color: var(--muted); }
+    .desktop-only { display: none; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="logo" aria-hidden="true">
+      <svg width="40" height="40" viewBox="0 0 48 48" fill="none">
+        <circle cx="24" cy="24" r="5" fill="#fff"/>
+        <path d="M16 14 A14 14 0 0 0 16 34" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+        <path d="M32 14 A14 14 0 0 1 32 34" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+      </svg>
+    </div>
+    <h1>Echon for Android</h1>
+    <p class="sub">Voice &amp; text chat, native on Android.</p>
+
+    <!-- Web team: point href at the hosted APK; keep filename stable or version it. -->
+    <a class="btn" id="download" href="/app/echon-latest.apk" download>Download Echon</a>
+    <p class="meta" id="version">Version 2.0.0 · Android 7.0+</p>
+
+    <section class="steps">
+      <h2>Installing</h2>
+      <ol>
+        <li>Tap <strong>Download Echon</strong> above.</li>
+        <li>Open the downloaded file. Android will ask to allow installs from your browser — tap <strong>Settings</strong> and enable it, then go back.</li>
+        <li>Tap <strong>Install</strong>, then <strong>Open</strong>.</li>
+      </ol>
+      <p class="note">Echon is signed by the Echon developer key. Future in-app updates are delivered automatically.</p>
+    </section>
+  </main>
+
+  <script>
+    // Light touch: show a hint if opened on a non-Android device.
+    var isAndroid = /android/i.test(navigator.userAgent);
+    if (!isAndroid) {
+      var v = document.getElementById('version');
+      v.textContent = 'Open this page on your Android phone to install · Android 7.0+';
+    }
+  </script>
+</body>
+</html>

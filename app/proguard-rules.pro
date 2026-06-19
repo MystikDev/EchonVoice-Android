@@ -14,6 +14,11 @@
 -dontwarn retrofit2.**
 -keepattributes Signature, Exceptions
 
+# Tink (EncryptedSharedPreferences) references Error Prone annotations that are
+# compile-only and absent at runtime — safe to ignore.
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn javax.annotation.**
+
 # LiveKit / WebRTC
 -keep class org.webrtc.** { *; }
 -keep class io.livekit.android.** { *; }

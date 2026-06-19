@@ -5,6 +5,15 @@ same backend. Full plan: `~/.claude/plans/hashed-soaring-lollipop.md`.
 
 Each phase ends runnable + verified on emulator/device with the demo account, then a commit.
 
+## Distribution — direct download from website  ✅ pipeline done
+- [x] Release keystore + Gradle signing config (secrets gitignored); signed release APK builds under R8
+- [x] Fix R8 (Tink errorprone dontwarn); release build verified to RUN (login works minified) + APK signature verified (v2)
+- [x] In-app updater: manifest model, UpdateChecker, ApkInstaller (FileProvider + REQUEST_INSTALL_PACKAGES), UpdatePrompt overlay; 5/5 unit tests
+- [x] download.html + latest.json + distribution/README.md (hosting handoff for web team)
+- [x] Relocate build output out of iCloud-synced tree (fixes conflicted-copy build breakage)
+- [ ] Web team: host APK + latest.json + /download; complete Android developer verification
+- [ ] (later) bump v3 signing; density PNG launcher icons
+
 ## Phase 0 — Scaffold + secure networking spine  ✅ done (commit f20daef)
 - [x] Install toolchain (JDK 17, Android SDK 35, build-tools, emulator, Gradle wrapper 8.11.1)
 - [x] Gradle/Hilt/Compose project (single module, package-by-feature)
@@ -21,7 +30,7 @@ Each phase ends runnable + verified on emulator/device with the demo account, th
 - [x] Login + Register (DOB date-picker, ToS checkbox) + native EULA gate screens
 - [x] Root router on auth phase; encrypted-token cold-start restore; unauthorized→signOut wiring
 - [x] **Verify (emulator, demo account):** login → Signed in (MystikDev#1838); force-stop→relaunch restores session; sign-out → Login; Register renders with DOB+ToS gate
-- [ ] Commit
+- [x] Commit (ccb195d)
 
 ## Phase 2 — Moderation (early): report/block/blocked-list/instant filter/account deletion
 ## Phase 3 — Servers/channels + realtime chat (WS, reconcile, attachments)

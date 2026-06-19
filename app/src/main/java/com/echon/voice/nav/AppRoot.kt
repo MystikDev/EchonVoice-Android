@@ -24,6 +24,7 @@ import com.echon.voice.feature.auth.EulaScreen
 import com.echon.voice.feature.auth.LoginScreen
 import com.echon.voice.feature.auth.RegisterScreen
 import com.echon.voice.feature.home.HomePlaceholderScreen
+import com.echon.voice.feature.update.UpdatePrompt
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -64,6 +65,9 @@ fun AppRoot(
                 AuthStore.Phase.SignedIn -> HomePlaceholderScreen(modifier = Modifier.padding(padding))
             }
         }
+
+        // Update prompt overlays any phase (direct-download has no Play auto-update).
+        UpdatePrompt()
     }
 }
 
