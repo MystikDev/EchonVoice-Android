@@ -37,6 +37,11 @@ Each phase ends runnable + verified on emulator/device with the demo account, th
 - [x] Verified on emulator: blocked list loads live (Phrosen#2963); delete dialog gates; nav works
 
 ## Phase 2 — Moderation (early): report/block/blocked-list/instant filter/account deletion
+## Phase 3 — Servers/channels + realtime chat  ✅ done (commit 981989a)
+- [x] WS layer (WsClient/WsEvent/RealtimeStore), ServersStore, MessageStore+ChatStores
+- [x] ServersScreen, ChatScreen, MessageRow, MessageActionsSheet, MainScaffold bottom-nav
+- [x] Verified live: servers/channels load, history paginates, message sent+confirmed, image attachments render, block filter active
+
 ## Phase 3 — Servers/channels + realtime chat (WS, reconcile, attachments)
 ## Phase 4 — DMs, friends, invites, profiles, members, presence
 ## Phase 5 — LiveKit voice + view-only screen share

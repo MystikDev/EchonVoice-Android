@@ -45,7 +45,8 @@ class ChatViewModel @Inject constructor(
 
     val channelId: String = checkNotNull(savedState["channelId"])
     val channelName: String = savedState["channelName"] ?: "channel"
-    private val kind = ChatChannelKind.SERVER
+    private val kind: ChatChannelKind =
+        if (savedState.get<String>("channelKind") == "dm") ChatChannelKind.DM else ChatChannelKind.SERVER
 
     private val store: MessageStore = chatStores.store(channelId, kind)
     val currentUserId: String? get() = auth.currentUser.value?.id

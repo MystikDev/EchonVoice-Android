@@ -3,6 +3,8 @@ package com.echon.voice.core.realtime
 import com.echon.voice.core.di.ApplicationScope
 import com.echon.voice.feature.auth.AuthStore
 import com.echon.voice.feature.chat.ChatStores
+import com.echon.voice.feature.dms.DMsStore
+import com.echon.voice.feature.friends.FriendsStore
 import com.echon.voice.feature.moderation.BlocksStore
 import com.echon.voice.feature.servers.ServersStore
 import com.echon.voice.model.ChannelKind
@@ -33,6 +35,8 @@ class RealtimeStore @Inject constructor(
     private val servers: ServersStore,
     private val auth: AuthStore,
     private val blocks: BlocksStore,
+    private val dms: DMsStore,
+    private val friends: FriendsStore,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     private val _isConnected = MutableStateFlow(false)
@@ -137,6 +141,7 @@ class RealtimeStore @Inject constructor(
                 val kind = if (event.message.channelKind == "dm") ChatChannelKind.DM else ChatChannelKind.SERVER
                 chat.store(channelId, kind).applyRemote(event.message)
                 clearTyping(event.message.author?.id, channelId)
+                if (kind == ChatChannelKind.DM) dms.touch(channelId, event.message.createdAt)
                 if (channelId != openChannelId && event.message.author?.id != myId) {
                     _unreadChannelIds.update { it + channelId }
                 }
@@ -157,8 +162,8 @@ class RealtimeStore @Inject constructor(
             is WsEvent.PresenceChanged -> _presence.update { it + (event.userId to event.status) }
             is WsEvent.UserBlocked -> blocks.applyRemote(event.userId, true)
             is WsEvent.UserUnblocked -> blocks.applyRemote(event.userId, false)
+            is WsEvent.FriendsChanged -> scope.launch { runCatching { friends.load() } }
             is WsEvent.VoiceStateChanged,
-            is WsEvent.FriendsChanged,
             is WsEvent.ReadStateUpdated,
             is WsEvent.Ready,
             is WsEvent.Unknown,

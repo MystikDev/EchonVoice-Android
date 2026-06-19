@@ -41,6 +41,7 @@ fun MessageRow(
     onToggleReaction: (String) -> Unit,
     onRetry: () -> Unit,
     onDiscard: () -> Unit,
+    onTapAuthor: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (message.isSystem == true) {
@@ -61,7 +62,7 @@ fun MessageRow(
             .padding(horizontal = 14.dp, vertical = 5.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Avatar(user = message.author, size = 36.dp)
+        Avatar(user = message.author, size = 36.dp, modifier = Modifier.clickable(onClick = onTapAuthor))
 
         Column(verticalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.weight(1f)) {
             if (message.replyToId != null) ReplyPreview(repliedTo)

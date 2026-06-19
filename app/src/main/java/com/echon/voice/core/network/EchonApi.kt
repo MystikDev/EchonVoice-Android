@@ -2,7 +2,14 @@ package com.echon.voice.core.network
 
 import com.echon.voice.model.AppRelease
 import com.echon.voice.model.ChannelsResponse
+import com.echon.voice.model.DMConversation
 import com.echon.voice.model.DeleteAccountRequest
+import com.echon.voice.model.FriendByNameRequest
+import com.echon.voice.model.FriendRequestsResponse
+import com.echon.voice.model.Invite
+import com.echon.voice.model.InvitePreview
+import com.echon.voice.model.MembersResponse
+import com.echon.voice.model.OpenDmRequest
 import com.echon.voice.model.EditMessageRequest
 import com.echon.voice.model.LoginRequest
 import com.echon.voice.model.LoginResponse
@@ -150,4 +157,48 @@ interface EchonApi {
     @GET
     @Headers("${AuthInterceptor.NO_AUTH_HEADER}: 1")
     suspend fun latestRelease(@Url url: String = "app/latest.json"): AppRelease
+
+    // --- DMs ---
+
+    @GET("v1/me/dms")
+    suspend fun myDms(): List<DMConversation>
+
+    @POST("v1/me/dms")
+    suspend fun openDm(@Body body: OpenDmRequest): DMConversation
+
+    // --- Friends ---
+
+    @GET("v1/me/friends")
+    suspend fun myFriends(): List<User>
+
+    @GET("v1/me/friends/requests")
+    suspend fun friendRequests(): FriendRequestsResponse
+
+    @POST("v1/me/friends/requests")
+    suspend fun sendFriendRequest(@Body body: FriendByNameRequest)
+
+    @PUT("v1/me/friends/requests/{id}/accept")
+    suspend fun acceptFriendRequest(@Path("id") id: String)
+
+    @DELETE("v1/me/friends/requests/{id}")
+    suspend fun deleteFriendRequest(@Path("id") id: String)
+
+    @DELETE("v1/me/friends/{id}")
+    suspend fun removeFriend(@Path("id") userId: String)
+
+    // --- Invites ---
+
+    @POST("v1/channels/{id}/invites")
+    suspend fun createInvite(@Path("id") channelId: String): Invite
+
+    @GET("v1/invites/{code}")
+    suspend fun previewInvite(@Path("code") code: String): InvitePreview
+
+    @POST("v1/invites/{code}/use")
+    suspend fun useInvite(@Path("code") code: String)
+
+    // --- Members ---
+
+    @GET("v1/servers/{id}/members")
+    suspend fun serverMembers(@Path("id") serverId: String): MembersResponse
 }

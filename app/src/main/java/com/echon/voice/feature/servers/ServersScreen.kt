@@ -20,6 +20,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,12 +59,16 @@ class ServersViewModel @Inject constructor(
 @Composable
 fun ServersScreen(
     onOpenChannel: (channelId: String, channelName: String) -> Unit,
+    onOpenMembers: (serverId: String) -> Unit,
     viewModel: ServersViewModel = hiltViewModel(),
 ) {
     val servers by viewModel.serverList.collectAsStateWithLifecycle()
     val selectedId by viewModel.selectedServerId.collectAsStateWithLifecycle()
     val channelsByServer by viewModel.channelsByServer.collectAsStateWithLifecycle()
     val unread by viewModel.unread.collectAsStateWithLifecycle()
+
+    var showJoin by remember { mutableStateOf(false) }
+    var inviteChannelId by remember { mutableStateOf<String?>(null) }
 
     Row(modifier = Modifier.fillMaxSize()) {
         // Server rail
@@ -77,13 +84,29 @@ fun ServersScreen(
             servers.forEach { server ->
                 ServerIcon(server, selected = server.id == selectedId) { viewModel.select(server.id) }
             }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.background)
+                    .clickable { showJoin = true },
+                contentAlignment = Alignment.Center,
+            ) { Text("+", color = EchonColors.Primary, fontWeight = FontWeight.Bold) }
         }
 
         // Channel list (observed so it recomposes when channels finish loading)
         val channels = (channelsByServer[selectedId] ?: emptyList()).sortedBy { it.position ?: 0 }
+        val text = channels.filter { it.type == ChannelKind.TEXT }
+        val voice = channels.filter { it.type == ChannelKind.VOICE }
         LazyColumn(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-            val text = channels.filter { it.type == ChannelKind.TEXT }
-            val voice = channels.filter { it.type == ChannelKind.VOICE }
+            selectedId?.let { sid ->
+                item {
+                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Text("Members", color = EchonColors.Primary, modifier = Modifier.clickable { onOpenMembers(sid) })
+                        Text("Invite", color = EchonColors.Primary, modifier = Modifier.clickable { inviteChannelId = text.firstOrNull()?.id })
+                    }
+                }
+            }
             items(text, key = { it.id }) { channel ->
                 ChannelRow(
                     prefix = "#",
@@ -98,6 +121,13 @@ fun ServersScreen(
                 }
             }
         }
+    }
+
+    if (showJoin) {
+        com.echon.voice.feature.invites.JoinServerSheet(onDismiss = { showJoin = false })
+    }
+    inviteChannelId?.let { cid ->
+        com.echon.voice.feature.invites.CreateInviteSheet(channelId = cid, onDismiss = { inviteChannelId = null })
     }
 }
 

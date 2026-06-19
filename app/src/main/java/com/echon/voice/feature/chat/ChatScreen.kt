@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ChatScreen(
     onBack: () -> Unit,
+    onOpenProfile: (com.echon.voice.model.User) -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel(),
 ) {
     val messages by viewModel.visibleMessages.collectAsStateWithLifecycle()
@@ -140,6 +141,7 @@ fun ChatScreen(
                         onToggleReaction = { emoji -> viewModel.react(message, emoji) },
                         onRetry = { viewModel.retry(message) },
                         onDiscard = { viewModel.discard(message) },
+                        onTapAuthor = { message.author?.let(onOpenProfile) },
                     )
                 }
             }
