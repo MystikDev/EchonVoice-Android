@@ -50,14 +50,16 @@ points at the GitHub `releases/latest/download/echon-release.apk` URL.
 
 ```json
 {
-  "versionCode": 1,             // integer; compared against the installed versionCode
-  "versionName": "2.0.0",       // display string
-  "apkUrl": "https://echon-voice.com/app/echon-latest.apk",
-  "minSupportedVersionCode": 1, // installs older than this are forced to update
-  "mandatory": false,           // if true, the app blocks until updated
-  "notes": "What's new..."      // shown in the update prompt
+  "version_code": 4,                // integer; compared against the installed versionCode
+  "version_name": "2.0.3",          // display string
+  "apk_url": "https://github.com/<owner>/<repo>/releases/latest/download/echon-release.apk",
+  "min_supported_version_code": 1,  // installs older than this are forced to update
+  "mandatory": false,               // if true, the update is treated as required
+  "notes": "What's new..."
 }
 ```
+Keys are **snake_case** (matching the app's JSON decoder). The release asset must be
+named exactly **`echon-release.apk`** so `releases/latest/download/echon-release.apk` resolves.
 
 Release flow each time we ship:
 1. Bump `versionCode` (and `versionName`) in `app/build.gradle.kts`, build the signed APK.

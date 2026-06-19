@@ -64,7 +64,7 @@ class UpdateViewModel @Inject constructor(
             val apk = installer.download(apkUrl)
             installer.install(apk) // silent on API 31+; system installer otherwise
         } catch (e: Exception) {
-            // Never block the app on a failed update.
+            android.util.Log.w("EchonUpdate", "auto-update failed", e)
         } finally {
             phase = Phase.Idle
         }

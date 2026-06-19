@@ -36,6 +36,6 @@ class GithubReleaseManifestSource @Inject constructor(
                 if (!response.isSuccessful) return@use null
                 response.body?.string()?.let { EchonJson.decodeFromString(AppRelease.serializer(), it) }
             }
-        }.getOrNull()
+        }.onFailure { android.util.Log.w("EchonUpdate", "manifest fetch failed", it) }.getOrNull()
     }
 }

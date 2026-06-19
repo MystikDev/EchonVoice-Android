@@ -14,7 +14,10 @@ import android.content.pm.PackageInstaller
  */
 class InstallResultReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)) {
+        val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)
+        val msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+        android.util.Log.i("EchonUpdate", "install result status=$status msg=$msg")
+        when (status) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 @Suppress("DEPRECATION")
                 val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
