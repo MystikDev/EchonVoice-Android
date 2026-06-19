@@ -1,13 +1,14 @@
 package com.echon.voice.nav
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,7 +24,6 @@ import com.echon.voice.feature.auth.AuthStore
 import com.echon.voice.feature.auth.EulaScreen
 import com.echon.voice.feature.auth.LoginScreen
 import com.echon.voice.feature.auth.RegisterScreen
-import com.echon.voice.feature.home.HomePlaceholderScreen
 import com.echon.voice.feature.update.UpdatePrompt
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -43,7 +43,8 @@ class RootViewModel @Inject constructor(
 
 /**
  * Top-level router, mirroring the iOS `RootView` phase machine:
- * loading → (signedOut | needsEULA | signedIn).
+ * loading → (signedOut | needsEULA | signedIn). Signed-out/EULA screens get
+ * safe-drawing insets; the signed-in area manages its own via per-screen Scaffolds.
  */
 @Composable
 fun AppRoot(
@@ -52,17 +53,17 @@ fun AppRoot(
 ) {
     val phase by viewModel.phase.collectAsStateWithLifecycle()
 
-    Scaffold(modifier = modifier.fillMaxSize()) { padding ->
+    Box(modifier = modifier.fillMaxSize()) {
         AnimatedContent(
             targetState = phase,
-            transitionSpec = { fadeThrough() },
+            transitionSpec = { fadeIn() togetherWith fadeOut() },
             label = "auth-phase",
         ) { current ->
             when (current) {
-                AuthStore.Phase.Loading -> LoadingScreen(Modifier.padding(padding))
-                AuthStore.Phase.SignedOut -> AuthFlow(Modifier.padding(padding))
-                AuthStore.Phase.NeedsEula -> EulaScreen(modifier = Modifier.padding(padding))
-                AuthStore.Phase.SignedIn -> HomePlaceholderScreen(modifier = Modifier.padding(padding))
+                AuthStore.Phase.Loading -> LoadingScreen()
+                AuthStore.Phase.SignedOut -> AuthFlow(Modifier.safeDrawingPadding())
+                AuthStore.Phase.NeedsEula -> EulaScreen(modifier = Modifier.safeDrawingPadding())
+                AuthStore.Phase.SignedIn -> SignedInNavHost()
             }
         }
 
@@ -87,6 +88,3 @@ private fun LoadingScreen(modifier: Modifier = Modifier) {
         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
     }
 }
-
-private fun fadeThrough() =
-    androidx.compose.animation.fadeIn() togetherWith androidx.compose.animation.fadeOut()
