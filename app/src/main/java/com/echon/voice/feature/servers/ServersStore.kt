@@ -3,6 +3,7 @@ package com.echon.voice.feature.servers
 import com.echon.voice.core.network.EchonApi
 import com.echon.voice.core.network.apiCall
 import com.echon.voice.model.Channel
+import com.echon.voice.model.Member
 import com.echon.voice.model.Server
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,11 +26,17 @@ class ServersStore @Inject constructor(
     private val _selectedServerId = MutableStateFlow<String?>(null)
     val selectedServerId: StateFlow<String?> = _selectedServerId.asStateFlow()
 
+    private val _membersByServer = MutableStateFlow<Map<String, List<Member>>>(emptyMap())
+    val membersByServer: StateFlow<Map<String, List<Member>>> = _membersByServer.asStateFlow()
+
     suspend fun loadServers() {
         val response = apiCall { api.myServers() }
         _servers.value = response.servers
         if (_selectedServerId.value == null) _selectedServerId.value = response.servers.firstOrNull()?.id
-        _selectedServerId.value?.let { loadChannels(it) }
+        _selectedServerId.value?.let {
+            loadChannels(it)
+            loadMembers(it)
+        }
     }
 
     suspend fun loadChannels(serverId: String) {
@@ -37,9 +44,15 @@ class ServersStore @Inject constructor(
         _channelsByServer.update { it + (serverId to response.channels) }
     }
 
+    suspend fun loadMembers(serverId: String) {
+        val response = apiCall { api.serverMembers(serverId) }
+        _membersByServer.update { it + (serverId to response.members) }
+    }
+
     suspend fun select(serverId: String) {
         _selectedServerId.value = serverId
         if (_channelsByServer.value[serverId] == null) loadChannels(serverId)
+        if (_membersByServer.value[serverId] == null) loadMembers(serverId)
     }
 
     fun channelsFor(serverId: String?): List<Channel> =

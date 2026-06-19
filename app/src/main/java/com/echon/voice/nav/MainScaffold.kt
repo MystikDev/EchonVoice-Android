@@ -76,6 +76,7 @@ fun MainScaffold(
                     onOpenChannel = { id, name -> onOpenChannel(id, name, "server") },
                     onOpenVoice = onOpenVoice,
                     onOpenMembers = onOpenMembers,
+                    onOpenProfile = onOpenProfile,
                 )
                 1 -> DMListScreen(onOpenDm = { id, name -> onOpenChannel(id, name, "dm") })
                 2 -> FriendsScreen(onOpenProfile = onOpenProfile)
