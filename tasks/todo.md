@@ -52,5 +52,28 @@ Each phase ends runnable + verified on emulator/device with the demo account, th
 ## Phase 5 — LiveKit voice + view-only screen share
 ## Phase 6 — Settings polish, theming, hardening, Play release prep
 
+## Phase 5 — LiveKit voice + view-only screen share  ✅ done (commit 05addc5)
+- [x] VoiceCallStore, CallForegroundService (mic FGS), VoiceCallScreen, occupancy endpoints
+- [x] Verified live: call connects (WebRTC), mute, FGS start/stop, leave
+
+## Phase 6 — Settings polish + release prep  ✅ done (commit dd421a4)
+- [x] Edit profile (avatar/about/DM privacy) + change password
+- [x] GitHub-Releases distribution: updater→GitHub (plain client), download.html/latest.json/UpdateConfig, release workflow, conditional buildDir for CI
+- [x] Verified: settings rows + Edit Profile render; signed release APK builds; tests green
+
+## Published
+- [x] Pushed to PUBLIC github.com/MystikDev/EchonVoice-Android (main)
+- [x] Release v2.0.0 with signed echon-release.apk attached; download URL verified serving real APK bytes
+- [ ] Web team: host download.html at echon-voice.com/download
+- [ ] (optional) activate release workflow (needs `workflow` token scope + CI secrets)
+
 ## Review
-_(filled in as phases complete)_
+**All 6 phases complete, each built + verified on the emulator + committed.** The app
+mirrors the iOS client: auth + native EULA gate, moderation (block/report/blocked-list/
+account deletion, render-time block filter), servers + realtime chat (WS, pagination,
+attachments, reactions/replies/pins/typing), DMs/friends/invites/profiles/members,
+LiveKit voice + view-only screen share, and settings (profile/password). Distributed
+via GitHub Releases — signed APK pulled transparently from the website link and updated
+in-app. Cert-pinned API; no payments UI; Play-compliant moderation + mic FGS if Play is
+pursued later.
+
