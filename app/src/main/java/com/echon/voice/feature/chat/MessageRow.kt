@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,7 +26,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.border
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.echon.voice.core.designsystem.Avatar
 import com.echon.voice.core.designsystem.EchonColors
 import com.echon.voice.model.Attachment
@@ -131,7 +134,7 @@ private fun ReplyPreview(repliedTo: Message?) {
 @Composable
 private fun AttachmentView(attachment: Attachment) {
     if (attachment.isImage) {
-        AsyncImage(
+        SubcomposeAsyncImage(
             model = attachment.resolvedUrl,
             contentDescription = attachment.filename,
             contentScale = ContentScale.Crop,
@@ -139,18 +142,34 @@ private fun AttachmentView(attachment: Attachment) {
                 .padding(top = 4.dp)
                 .size(width = 240.dp, height = 170.dp)
                 .clip(RoundedCornerShape(12.dp)),
+            loading = {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
+                    contentAlignment = Alignment.Center,
+                ) { CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
+            },
+            error = { FileChip(attachment.filename ?: "image", note = "Image unavailable") },
         )
     } else {
-        Row(
-            modifier = Modifier
-                .padding(top = 4.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text("📄")
-            Text(attachment.filename ?: "file", style = MaterialTheme.typography.bodySmall, maxLines = 1)
+        FileChip(attachment.filename ?: "file", note = null)
+    }
+}
+
+@Composable
+private fun FileChip(name: String, note: String?) {
+    Row(
+        modifier = Modifier
+            .padding(top = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("📄")
+        Column {
+            Text(name, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+            note?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
 }

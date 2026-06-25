@@ -19,6 +19,11 @@
 -dontwarn com.google.errorprone.annotations.**
 -dontwarn javax.annotation.**
 
+# Coil — keep the app's ImageLoaderFactory so Coil's runtime cast finds it
+# (R8 full mode can otherwise drop the interface, falling back to a default loader).
+-keep class * implements coil.ImageLoaderFactory { *; }
+-keep class com.echon.voice.EchonApp { *; }
+
 # LiveKit / WebRTC
 -keep class org.webrtc.** { *; }
 -keep class io.livekit.android.** { *; }

@@ -1,8 +1,8 @@
 {
-  "version_code": 6,
-  "version_name": "2.0.5",
+  "version_code": 7,
+  "version_name": "2.0.6",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Server view now shows who is in each voice channel (live presence)."
+  "notes": "Fixes: composer no longer hidden behind the navigation bar; avatars/icons now load in the release build."
 }
