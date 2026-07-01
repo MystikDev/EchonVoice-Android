@@ -51,10 +51,17 @@ class ChatViewModel @Inject constructor(
     private val store: MessageStore = chatStores.store(channelId, kind)
     val currentUserId: String? get() = auth.currentUser.value?.id
 
-    /** Messages rendered through the block filter — blocking removes content instantly. */
+    /**
+     * Messages rendered through the block filter — blocking removes content
+     * instantly. Beyond dropping a blocked author's own messages, we also strip
+     * their reaction contributions so a blocked user can't surface via a
+     * reaction count; reply previews are filtered in [repliedTo].
+     */
     val visibleMessages: StateFlow<List<Message>> =
         combine(store.messages, blocks.blockedIds) { messages, blocked ->
-            messages.filter { it.author?.id !in blocked }
+            messages
+                .filter { it.author?.id !in blocked }
+                .map { it.withoutBlockedReactions(blocked) }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val loadingOlder: StateFlow<Boolean> = store.loadingOlder
@@ -129,7 +136,13 @@ class ChatViewModel @Inject constructor(
 
     suspend fun block(user: User) = blocks.block(user)
 
-    fun repliedTo(message: Message): Message? = store.message(withId = message.replyToId)
+    /**
+     * The message a reply points at, or null if its author is blocked — so a
+     * blocked user's username/content can't leak through a reply preview (the
+     * preview then falls back to the neutral "Original message" placeholder).
+     */
+    fun repliedTo(message: Message): Message? =
+        store.message(withId = message.replyToId)?.takeUnless { blocks.isBlocked(it.author?.id) }
 
     fun isMine(message: Message): Boolean = message.author?.id == currentUserId
 
@@ -165,4 +178,25 @@ class ChatViewModel @Inject constructor(
     fun removePending(attachment: OutgoingAttachment) {
         pending = pending.filterNot { it.url == attachment.url }
     }
+}
+
+/**
+ * Recomputes reaction tallies to exclude blocked users, so a blocked user can't
+ * remain visible via a reaction count. Reactions whose users are all blocked
+ * drop out entirely; reactions the server didn't itemize (null `userIds`) are
+ * left untouched — they can't be attributed and carry no author content.
+ */
+internal fun Message.withoutBlockedReactions(blocked: Set<String>): Message {
+    val current = reactions
+    if (blocked.isEmpty() || current.isNullOrEmpty()) return this
+    val filtered = current.mapNotNull { reaction ->
+        val ids = reaction.userIds ?: return@mapNotNull reaction
+        val remaining = ids.filterNot { it in blocked }
+        when {
+            remaining.size == ids.size -> reaction
+            remaining.isEmpty() -> null
+            else -> reaction.copy(userIds = remaining, count = remaining.size)
+        }
+    }
+    return if (filtered == current) this else copy(reactions = filtered)
 }

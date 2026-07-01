@@ -21,6 +21,11 @@ object NetworkModule {
 
     private fun logging(): HttpLoggingInterceptor =
         HttpLoggingInterceptor().apply {
+            // Never emit session credentials to logcat, even in debug builds:
+            // HEADERS would otherwise print the bearer and the rotating refresh
+            // token to any app/user with READ_LOGS or `adb logcat`.
+            redactHeader("Authorization")
+            redactHeader("X-Refresh-Token")
             level = if (BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.HEADERS
             } else {

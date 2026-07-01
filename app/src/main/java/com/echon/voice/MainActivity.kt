@@ -1,6 +1,7 @@
 package com.echon.voice
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,6 +17,13 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // FLAG_SECURE keeps signed-in content (messages, DMs, the login email
+        // field) out of the recents/overview snapshot and blocks screenshots of
+        // private content. Trade-off: users can't screenshot in-app either.
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE,
+        )
         enableEdgeToEdge()
         setContent {
             EchonTheme {
