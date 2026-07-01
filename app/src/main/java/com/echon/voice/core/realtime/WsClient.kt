@@ -79,8 +79,11 @@ class WsClient @Inject constructor(
             val closed = CompletableDeferred<Unit>()
             try {
                 val ticket = api.wsTicket().ticket
+                // Percent-encode the ticket so reserved characters (+, /, =) in a
+                // non-URL-safe token can't corrupt the query string.
+                val encodedTicket = java.net.URLEncoder.encode(ticket, "UTF-8")
                 val request = Request.Builder()
-                    .url("${ApiConfig.WS_URL}?ticket=$ticket")
+                    .url("${ApiConfig.WS_URL}?ticket=$encodedTicket")
                     .build()
                 client.newWebSocket(request, listener(closed))
                 closed.await() // suspends until this connection drops

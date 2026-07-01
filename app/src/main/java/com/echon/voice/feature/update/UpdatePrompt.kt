@@ -22,8 +22,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.echon.voice.core.update.ApkInstaller
 import com.echon.voice.core.update.UpdateChecker
+import com.echon.voice.core.update.UpdateConfig
 import com.echon.voice.core.update.UpdateStatus
 import com.echon.voice.feature.auth.AuthStore
+import com.echon.voice.model.AppRelease
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -51,13 +53,13 @@ class UpdateViewModel @Inject constructor(
     var availableVersionName by mutableStateOf<String?>(null)
         private set
 
-    private var pendingApkUrl: String? = null
+    private var pendingRelease: AppRelease? = null
 
     init {
         // On load: silent auto-update.
         viewModelScope.launch {
             val status = checker.check()
-            if (status is UpdateStatus.Available) silentUpdate(status.release.apkUrl)
+            if (status is UpdateStatus.Available) silentUpdate(status.release)
         }
         // Post-login: poll every 10 minutes and prompt (collectLatest stops the
         // loop automatically on sign-out / phase change).
@@ -69,7 +71,7 @@ class UpdateViewModel @Inject constructor(
                     if (phase != Phase.Idle) continue // a download/prompt is already in flight
                     val status = checker.check()
                     if (status is UpdateStatus.Available) {
-                        pendingApkUrl = status.release.apkUrl
+                        pendingRelease = status.release
                         availableVersionName = status.release.versionName
                         phase = Phase.PromptAvailable
                     }
@@ -80,8 +82,8 @@ class UpdateViewModel @Inject constructor(
 
     /** User chose "Update now" from the mid-session prompt. */
     fun updateNow() {
-        val url = pendingApkUrl ?: return
-        viewModelScope.launch { silentUpdate(url) }
+        val release = pendingRelease ?: return
+        viewModelScope.launch { silentUpdate(release) }
     }
 
     fun updateLater() {
@@ -97,15 +99,19 @@ class UpdateViewModel @Inject constructor(
         phase = Phase.Idle
     }
 
-    private suspend fun silentUpdate(apkUrl: String) {
+    private suspend fun silentUpdate(release: AppRelease) {
         if (!installer.canInstall()) {
-            pendingApkUrl = apkUrl
+            pendingRelease = release
             phase = Phase.NeedsPermission
             return
         }
         phase = Phase.Downloading
         try {
-            val apk = installer.download(apkUrl)
+            // Always pull from the fixed, compile-time release URL rather than a
+            // manifest-supplied one, so a tampered manifest can't redirect the
+            // download; the manifest only decides *whether* to update and carries
+            // the expected hash to verify the bytes.
+            val apk = installer.download(UpdateConfig.LATEST_APK_URL, expectedSha256 = release.sha256)
             installer.install(apk) // silent on API 31+; system installer otherwise
         } catch (e: Exception) {
             android.util.Log.w("EchonUpdate", "auto-update failed", e)

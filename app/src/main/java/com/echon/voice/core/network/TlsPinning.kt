@@ -18,9 +18,16 @@ import okhttp3.CertificatePinner
  * The resulting X1 pin matches the value the legacy WebView wrapper already
  * shipped in its network_security_config.xml, cross-validating the derivation.
  *
- * This single pinner is shared by the REST client, the WebSocket, Coil image
- * loading, and LiveKit token/media fetches — so every connection to the host
- * fails closed if neither root is in the evaluated chain.
+ * This pinner is shared by the REST client, the WebSocket, the refresh client,
+ * and Coil image loading — every connection those make to the host fails closed
+ * if neither root is in the evaluated chain.
+ *
+ * Note: LiveKit (voice) builds its own internal OkHttp stack and does NOT use
+ * this pinner. Its connection to `wss://echon-voice.com/lk` is instead pinned by
+ * the platform network_security_config.xml (same ISRG roots, includeSubdomains),
+ * which Android enforces on every socket regardless of client. If LiveKit ever
+ * moves off echon-voice.com, that platform pin would no longer cover it — pass
+ * this pinned client into LiveKit.create() at that point.
  */
 object TlsPinning {
     const val HOST = "echon-voice.com"

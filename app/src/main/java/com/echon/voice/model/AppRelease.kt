@@ -19,4 +19,11 @@ data class AppRelease(
     @SerialName("min_supported_version_code") val minSupportedVersionCode: Int = 0,
     @SerialName("mandatory") val mandatory: Boolean = false,
     @SerialName("notes") val notes: String? = null,
+    /**
+     * Lowercase hex SHA-256 of the release APK. When present, the installer
+     * verifies the downloaded bytes against it before install (defense-in-depth
+     * on top of Android's same-signing-key check). Nullable so older manifests
+     * still decode; absence falls back to the OS verifier alone.
+     */
+    @SerialName("sha256") val sha256: String? = null,
 )

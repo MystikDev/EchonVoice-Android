@@ -38,9 +38,16 @@ The repo slug is set in two places (update both if it changes): `distribution/la
 
 ### Integrity
 The APK and manifest are fetched over standard HTTPS (GitHub host), not the
-echon-voice.com pinned client. Integrity is guaranteed by Android's package
-verifier: an update must be signed with the **same release key** as the installed
-app, so a tampered APK is rejected at install. The app/API traffic stays cert-pinned.
+echon-voice.com pinned client. **Two** controls protect the update:
+1. **OS signature check** — an update must be signed with the **same release key**
+   as the installed app, so a differently-signed APK is rejected at install.
+2. **Manifest SHA-256** — `latest.json` carries the `sha256` of the release APK.
+   The updater always downloads from the fixed compile-time URL (never a
+   manifest-supplied one) and verifies the bytes against `sha256` before install,
+   so even a same-key but tampered/rolled-back artifact is caught. If `sha256` is
+   absent (older manifest), the app falls back to the OS check alone.
+
+The app/API traffic stays cert-pinned separately.
 
 ### Website download page
 `download.html` is a drop-in; the web team hosts it at `/download` and the button
@@ -55,17 +62,26 @@ points at the GitHub `releases/latest/download/echon-release.apk` URL.
   "apk_url": "https://github.com/<owner>/<repo>/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,  // installs older than this are forced to update
   "mandatory": false,               // if true, the update is treated as required
-  "notes": "What's new..."
+  "notes": "What's new...",
+  "sha256": "<lowercase hex SHA-256 of echon-release.apk>"  // optional but recommended
 }
 ```
 Keys are **snake_case** (matching the app's JSON decoder). The release asset must be
 named exactly **`echon-release.apk`** so `releases/latest/download/echon-release.apk` resolves.
+The `apk_url` field is informational only — the app downloads from the compile-time
+constant, not this value — so it can't be used to redirect the download.
 
 Release flow each time we ship:
 1. Bump `versionCode` (and `versionName`) in `app/build.gradle.kts`, build the signed APK.
-2. Upload the APK to the stable `apkUrl`.
-3. Update `latest.json` (`versionCode`, `versionName`, `notes`).
-   Existing installs detect the bump and prompt to update.
+2. Upload the APK to the stable `apkUrl` (asset name `echon-release.apk`).
+3. Compute its hash — `shasum -a 256 echon-release.apk` (or `sha256sum`) — and set
+   `sha256` in `latest.json` **to that exact APK's hash**.
+4. Update `latest.json` (`versionCode`, `versionName`, `notes`, `sha256`), commit.
+   Existing installs detect the bump, verify the hash, and prompt to update.
+
+> The GitHub Action automates steps 3–4: it computes the APK SHA-256 after building
+> and commits the updated `latest.json` to `main`, so the hash always matches the
+> published artifact.
 
 ## Signing (important)
 

@@ -14,6 +14,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.IOException
+import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
@@ -25,7 +26,12 @@ import javax.inject.Singleton
  * `setRequireUserAction(USER_ACTION_NOT_REQUIRED)` + the
  * UPDATE_PACKAGES_WITHOUT_USER_ACTION permission. On older devices, or when the
  * system declines, [InstallResultReceiver] forwards the user to the installer UI.
- * Integrity is guaranteed by the OS verifier (same signing key as the installed app).
+ *
+ * Two integrity controls apply: (1) Android's OS verifier rejects any APK not
+ * signed with the installed app's key; (2) when the manifest carries a [sha256],
+ * [download] verifies the bytes against it and refuses a mismatch — so even a
+ * same-key but unexpected/rolled-back artifact from a compromised download
+ * source is caught before install.
  */
 @Singleton
 class ApkInstaller @Inject constructor(
@@ -46,14 +52,27 @@ class ApkInstaller @Inject constructor(
         context.startActivity(intent)
     }
 
-    /** Streams the APK to cache over the plain client. */
-    suspend fun download(apkUrl: String): File = withContext(Dispatchers.IO) {
+    /**
+     * Streams the APK to cache over the plain client. When [expectedSha256] is
+     * non-null, the downloaded file's SHA-256 must match it (case-insensitive
+     * hex) or the file is deleted and an [IOException] is thrown before any
+     * install is attempted.
+     */
+    suspend fun download(apkUrl: String, expectedSha256: String? = null): File = withContext(Dispatchers.IO) {
         val response = client.newCall(Request.Builder().url(apkUrl).build()).execute()
         response.use {
             if (!it.isSuccessful) throw IOException("Download failed (${it.code}).")
             val body = it.body ?: throw IOException("Empty download body.")
             val file = File(context.cacheDir, "echon-update.apk")
             body.byteStream().use { input -> file.outputStream().use { out -> input.copyTo(out) } }
+
+            if (expectedSha256 != null) {
+                val actual = file.sha256Hex()
+                if (!actual.equals(expectedSha256, ignoreCase = true)) {
+                    file.delete()
+                    throw IOException("APK integrity check failed: expected $expectedSha256, got $actual.")
+                }
+            }
             file
         }
     }
@@ -83,4 +102,32 @@ class ApkInstaller @Inject constructor(
             session.commit(pending.intentSender)
         }
     }
+}
+
+/** Lowercase hex SHA-256 of this file's contents, streamed in fixed-size chunks. */
+internal fun File.sha256Hex(): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    inputStream().use { input ->
+        val buffer = ByteArray(8192)
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            digest.update(buffer, 0, read)
+        }
+    }
+    return digest.digest().toHexString()
+}
+
+/** Lowercase hex SHA-256 of these bytes (extracted for unit testing the digest). */
+internal fun ByteArray.sha256Hex(): String =
+    MessageDigest.getInstance("SHA-256").digest(this).toHexString()
+
+private fun ByteArray.toHexString(): String {
+    val hex = StringBuilder(size * 2)
+    for (b in this) {
+        val v = b.toInt() and 0xff
+        hex.append("0123456789abcdef"[v ushr 4])
+        hex.append("0123456789abcdef"[v and 0x0f])
+    }
+    return hex.toString()
 }
