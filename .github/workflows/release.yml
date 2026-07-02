@@ -1,0 +1,85 @@
+name: Release APK
+
+# Builds the signed release APK and publishes it as a GitHub Release whenever a
+# v* tag is pushed. To cut a release: bump versionCode/versionName in
+# app/build.gradle.kts (and edit distribution/latest.json "notes"), commit, then
+#   git tag vX.Y.Z && git push origin main --tags
+# CI derives version_code/version_name/sha256 from the built APK and commits them
+# into distribution/latest.json, so the manifest can never drift from the artifact.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Restore signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ECHON_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ECHON_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ECHON_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ECHON_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > app/echon-release.jks
+          cat > keystore.properties <<EOF
+          storeFile=echon-release.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: Build signed release APK
+        run: ./gradlew :app:assembleRelease
+
+      - name: Stage APK with stable name
+        run: cp app/build/outputs/apk/release/app-release.apk echon-release.apk
+
+      # Derive version + hash from the built APK and commit them into the manifest
+      # so the in-app updater's version check and SHA-256 verification always match
+      # the published artifact. "notes" is preserved from the committed manifest.
+      - name: Sync manifest to built APK and commit
+        run: |
+          SHA256=$(sha256sum echon-release.apk | awk '{print $1}')
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          BADGING=$("$AAPT" dump badging echon-release.apk)
+          VC=$(printf '%s' "$BADGING" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
+          VN=$(printf '%s' "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")
+          echo "versionCode=$VC versionName=$VN sha256=$SHA256"
+          python3 - "$VC" "$VN" "$SHA256" <<'PY'
+          import json, sys
+          vc, vn, sha = sys.argv[1], sys.argv[2], sys.argv[3]
+          path = "distribution/latest.json"
+          m = json.load(open(path))
+          m["version_code"] = int(vc)
+          m["version_name"] = vn
+          m["sha256"] = sha
+          with open(path, "w") as f:
+              json.dump(m, f, indent=2)
+              f.write("\n")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          git add distribution/latest.json
+          git commit -m "chore(release): sync manifest to ${GITHUB_REF_NAME}" || echo "manifest unchanged"
+          git push origin main
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: echon-release.apk
+          generate_release_notes: true
