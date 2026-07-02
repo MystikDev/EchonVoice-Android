@@ -1,10 +1,15 @@
 package com.echon.voice
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import com.echon.voice.core.designsystem.EchonTheme
 import com.echon.voice.nav.AppRoot
 import dagger.hilt.android.AndroidEntryPoint
@@ -15,6 +20,10 @@ import dagger.hilt.android.AndroidEntryPoint
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    private val requestNotifications =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* best-effort */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // FLAG_SECURE keeps signed-in content (messages, DMs, the login email
@@ -24,11 +33,24 @@ class MainActivity : ComponentActivity() {
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE,
         )
+        maybeRequestNotificationPermission()
         enableEdgeToEdge()
         setContent {
             EchonTheme {
                 AppRoot()
             }
         }
+    }
+
+    /**
+     * Ask once for POST_NOTIFICATIONS (Android 13+) so the background updater's
+     * "update ready" fallback notification can be shown. Older versions grant it
+     * at install time; if the user declines, silent self-update still works.
+     */
+    private fun maybeRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        if (!granted) requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }

@@ -113,6 +113,8 @@ dependencies {
 
     implementation(libs.androidx.security.crypto)
 
+    implementation(libs.androidx.work.runtime.ktx)
+
     implementation(libs.livekit.android)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs)

@@ -28,3 +28,7 @@
 -keep class org.webrtc.** { *; }
 -keep class io.livekit.android.** { *; }
 -dontwarn org.webrtc.**
+
+# WorkManager instantiates the worker reflectively via its (Context, WorkerParameters)
+# constructor; keep it so R8 can't strip the constructor in release.
+-keep class com.echon.voice.core.update.UpdateWorker { <init>(...); }

@@ -3,6 +3,7 @@ package com.echon.voice
 import android.app.Application
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import com.echon.voice.core.update.UpdateScheduler
 import dagger.hilt.android.HiltAndroidApp
 import okhttp3.OkHttpClient
 import javax.inject.Inject
@@ -18,6 +19,12 @@ import javax.inject.Inject
 @HiltAndroidApp
 class EchonApp : Application(), ImageLoaderFactory {
     @Inject lateinit var okHttpClient: OkHttpClient
+
+    override fun onCreate() {
+        super.onCreate()
+        // Keep directly-distributed installs current even when the app is closed.
+        UpdateScheduler.schedule(this)
+    }
 
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
