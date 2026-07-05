@@ -1,9 +1,9 @@
 {
-  "version_code": 11,
-  "version_name": "2.0.10",
+  "version_code": 12,
+  "version_name": "2.0.11",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Diagnostic build to pin down the camera issue on some devices.",
-  "sha256": "2382ab6a6ec31d9fcf416e9b490c147a0df4d5e2f96ce3d55edff16eb492c917"
+  "notes": "Fixes the camera button on Samsung and other devices (a permission conflict was blocking the camera). Taking a photo to post in a channel now works.",
+  "sha256": "pending-ci"
 }
