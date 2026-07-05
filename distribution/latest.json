@@ -5,5 +5,5 @@
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Fixes a crash when tapping the camera button on some devices. Taking a photo to post in a channel now works reliably.",
-  "sha256": "5401217ee92fd93c76553c63d2ee67336153c6be666ed947ada1f0fb5ab2eda8"
+  "sha256": "7ef2255433a22d24812fff5db8e6d48fec9cc1dcf9d9330d195035be9f827bd2"
 }
