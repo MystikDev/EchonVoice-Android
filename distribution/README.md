@@ -19,22 +19,23 @@ GitHub, so it's transparent to users.
 The repo slug is set in two places (update both if it changes): `distribution/latest.json`
 + `download.html`, and `UpdateConfig` in `core/update/ReleaseManifestSource.kt`.
 
-### Cutting a release (one push)
-1. Bump `versionCode` + `versionName` in `app/build.gradle.kts` and `distribution/latest.json`
-   (set `notes`), commit.
-2. `git tag vX.Y.Z && git push --tags`.
-3. The `Release APK` GitHub Action builds the signed APK and attaches `echon-release.apk`
-   to the release. Existing installs detect the new `versionCode` and prompt to update.
+### Cutting a release (tag-and-forget)
+1. Bump `versionCode` + `versionName` in `app/build.gradle.kts`; optionally edit the
+   `notes` in `distribution/latest.json`. Commit.
+2. `git tag vX.Y.Z && git push origin main --tags`.
+3. The `Release APK` GitHub Action (`.github/workflows/release.yml`) builds the signed
+   APK, publishes it as `echon-release.apk`, and **derives `version_code`/`version_name`/
+   `sha256` from the built APK and commits them into `latest.json`** — so the manifest
+   can't drift from the artifact. Existing installs detect the new `versionCode`, verify
+   the hash, and update.
 
-> **Enable the Action first:** it ships here as `distribution/github-release-workflow.yml`
-> (pushing into `.github/workflows/` needs the `workflow` token scope). To activate it,
-> move it to `.github/workflows/release.yml` and push after
-> `gh auth refresh -h github.com -s workflow` — or just add it through the GitHub web UI.
-> Until then, releases can be cut manually: `gh release create vX.Y.Z echon-release.apk`.
+The Action is **active**. Its four signing secrets are configured in the repo
+(Settings → Secrets → Actions): `ECHON_KEYSTORE_BASE64` (`base64 -i app/echon-release.jks`),
+`ECHON_KEYSTORE_PASSWORD`, `ECHON_KEY_ALIAS`, `ECHON_KEY_PASSWORD`. Rotate these if the
+release key ever changes.
 
-**CI secrets required** (Settings → Secrets → Actions): `ECHON_KEYSTORE_BASE64`
-(`base64 -i app/echon-release.jks`), `ECHON_KEYSTORE_PASSWORD`, `ECHON_KEY_ALIAS`,
-`ECHON_KEY_PASSWORD`.
+> Manual fallback (no CI) still works: build the signed APK, `shasum -a 256` it into
+> `latest.json`, commit, then `gh release create vX.Y.Z echon-release.apk`.
 
 ### Integrity
 The APK and manifest are fetched over standard HTTPS (GitHub host), not the
