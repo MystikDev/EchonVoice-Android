@@ -1,6 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Android 11+ package visibility: declare the camera-capture intent so the
+         app can resolve/launch the system camera app. Without this, TakePicture()
+         throws ActivityNotFoundException on devices where the camera app isn't
+         auto-visible. -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+
+    <!-- Camera is used opportunistically (attach a photo); not required to install. -->
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Direct-download self-update: install the downloaded APK. -->

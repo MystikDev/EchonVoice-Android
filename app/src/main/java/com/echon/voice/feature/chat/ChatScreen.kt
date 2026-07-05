@@ -1,5 +1,6 @@
 package com.echon.voice.feature.chat
 
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -64,6 +65,7 @@ fun ChatScreen(
     onOpenProfile: (com.echon.voice.model.User) -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel(),
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val messages by viewModel.visibleMessages.collectAsStateWithLifecycle()
     val typing by viewModel.typingNames.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
@@ -126,9 +128,17 @@ fun ChatScreen(
                     onSend = viewModel::send,
                     onAttach = { photoPicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     onCapture = {
-                        val uri = viewModel.newCameraCaptureUri()
-                        pendingCameraUri = uri
-                        takePhoto.launch(uri)
+                        // Never let opening the camera hard-crash the app: some
+                        // devices have no camera app (ActivityNotFoundException) or
+                        // reject the intent — degrade to a toast instead.
+                        try {
+                            val uri = viewModel.newCameraCaptureUri()
+                            pendingCameraUri = uri
+                            takePhoto.launch(uri)
+                        } catch (e: Exception) {
+                            pendingCameraUri = null
+                            Toast.makeText(context, "Couldn't open the camera on this device.", Toast.LENGTH_SHORT).show()
+                        }
                     },
                     uploading = viewModel.uploading,
                     channelName = viewModel.channelName,
