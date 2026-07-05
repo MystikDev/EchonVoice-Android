@@ -5,5 +5,5 @@
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Fixes the camera button on Samsung and other devices (a permission conflict was blocking the camera). Taking a photo to post in a channel now works.",
-  "sha256": "pending-ci"
+  "sha256": "4fa084ea2bcbd5e39c2c6f4ac41275ddfd96494b81ef7d5662decb91b75135eb"
 }
