@@ -2,6 +2,8 @@ package com.echon.voice.feature.chat
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.content.FileProvider
+import java.io.File
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -145,6 +147,17 @@ class ChatViewModel @Inject constructor(
         store.message(withId = message.replyToId)?.takeUnless { blocks.isBlocked(it.author?.id) }
 
     fun isMine(message: Message): Boolean = message.author?.id == currentUserId
+
+    /**
+     * Creates a FileProvider URI the system camera app can write a photo into.
+     * The captured file lands in a dedicated cache subdir; on capture success the
+     * caller feeds this URI back through [attach], reusing the upload path.
+     */
+    fun newCameraCaptureUri(): Uri {
+        val dir = File(context.cacheDir, "images").apply { mkdirs() }
+        val file = File(dir, "capture-${System.nanoTime()}.jpg")
+        return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    }
 
     fun attach(uris: List<Uri>) {
         if (uris.isEmpty()) return

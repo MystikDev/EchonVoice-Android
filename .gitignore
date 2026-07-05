@@ -11,3 +11,6 @@ captures/
 *.keystore
 *.jks
 keystore.properties
+
+# Kotlin 2.x build session data
+.kotlin/

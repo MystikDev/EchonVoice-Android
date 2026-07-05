@@ -48,5 +48,17 @@
         <receiver
             android:name=".core.update.InstallResultReceiver"
             android:exported="false" />
+
+        <!-- Grants the system camera app write access to a capture-staging file
+             so photos taken in-app can be attached to a message. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

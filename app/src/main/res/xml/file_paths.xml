@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Only the camera-capture staging dir is shareable, so a granted URI can
+         never expose anything else under cacheDir. -->
+    <cache-path name="captured_images" path="images/" />
+</paths>

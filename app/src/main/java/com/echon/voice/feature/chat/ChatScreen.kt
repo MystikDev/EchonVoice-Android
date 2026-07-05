@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -91,6 +92,16 @@ fun ChatScreen(
         ActivityResultContracts.PickMultipleVisualMedia(10),
     ) { uris -> viewModel.attach(uris) }
 
+    // Camera capture: hold the target URI created before launch, attach it on success.
+    var pendingCameraUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    val takePhoto = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture(),
+    ) { success ->
+        val uri = pendingCameraUri
+        if (success && uri != null) viewModel.attach(listOf(uri))
+        pendingCameraUri = null
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -114,6 +125,11 @@ fun ChatScreen(
                     onDraftChange = viewModel::onDraftChange,
                     onSend = viewModel::send,
                     onAttach = { photoPicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                    onCapture = {
+                        val uri = viewModel.newCameraCaptureUri()
+                        pendingCameraUri = uri
+                        takePhoto.launch(uri)
+                    },
                     uploading = viewModel.uploading,
                     channelName = viewModel.channelName,
                 )
@@ -232,6 +248,7 @@ private fun Composer(
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
     onAttach: () -> Unit,
+    onCapture: () -> Unit,
     uploading: Boolean,
     channelName: String,
 ) {
@@ -243,6 +260,9 @@ private fun Composer(
         ) {
             IconButton(onClick = onAttach, enabled = !uploading) {
                 Icon(Icons.Default.Add, contentDescription = "Attach", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick = onCapture, enabled = !uploading) {
+                Icon(Icons.Default.PhotoCamera, contentDescription = "Take photo", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TextField(
                 value = draft,
