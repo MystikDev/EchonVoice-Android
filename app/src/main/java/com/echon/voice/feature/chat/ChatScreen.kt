@@ -137,7 +137,14 @@ fun ChatScreen(
                             takePhoto.launch(uri)
                         } catch (e: Exception) {
                             pendingCameraUri = null
-                            Toast.makeText(context, "Couldn't open the camera on this device.", Toast.LENGTH_SHORT).show()
+                            // Diagnostic: surface the real cause so it can be reported
+                            // without a debugger (temporary — will revert to a clean message).
+                            android.util.Log.w("EchonCamera", "camera launch failed", e)
+                            Toast.makeText(
+                                context,
+                                "Camera error: ${e.javaClass.simpleName}: ${e.message}",
+                                Toast.LENGTH_LONG,
+                            ).show()
                         }
                     },
                     uploading = viewModel.uploading,

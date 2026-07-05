@@ -1,9 +1,9 @@
 {
-  "version_code": 10,
-  "version_name": "2.0.9",
+  "version_code": 11,
+  "version_name": "2.0.10",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Fixes a crash when tapping the camera button on some devices. Taking a photo to post in a channel now works reliably.",
-  "sha256": "7ef2255433a22d24812fff5db8e6d48fec9cc1dcf9d9330d195035be9f827bd2"
+  "notes": "Diagnostic build to pin down the camera issue on some devices.",
+  "sha256": "920265c9205741320422cf4f7a658b34d2d19b08fd83cb40023d76b76f8f7920"
 }
