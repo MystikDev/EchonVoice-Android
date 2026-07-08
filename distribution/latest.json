@@ -1,9 +1,9 @@
 {
-  "version_code": 12,
-  "version_name": "2.0.11",
+  "version_code": 13,
+  "version_name": "2.0.12",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Removes an unused screen-capture permission (media projection) that the app never used. No user-facing change.",
-  "sha256": "4fa084ea2bcbd5e39c2c6f4ac41275ddfd96494b81ef7d5662decb91b75135eb"
+  "sha256": "9351d7c2b70b6b2d7aab32937e65e5888b5c6c1a954660242781d193b0090226"
 }
