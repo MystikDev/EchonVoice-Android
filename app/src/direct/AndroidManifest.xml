@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Direct-download flavor only. These are the pieces Google Play prohibits
+  (self-updating apps), so they are merged in for the `direct` build and absent
+  from the `play` build.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Install the downloaded update APK. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Silent self-update without a confirmation dialog (Android 12+). -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+
+    <application>
+        <!-- Receives PackageInstaller results; surfaces the system confirm on
+             devices/cases where a silent self-update isn't permitted. -->
+        <receiver
+            android:name=".core.update.InstallResultReceiver"
+            android:exported="false" />
+    </application>
+</manifest>

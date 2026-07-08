@@ -3,7 +3,7 @@ package com.echon.voice
 import android.app.Application
 import coil.ImageLoader
 import coil.ImageLoaderFactory
-import com.echon.voice.core.update.UpdateScheduler
+import com.echon.voice.core.updateapi.scheduleAppUpdates
 import dagger.hilt.android.HiltAndroidApp
 import okhttp3.OkHttpClient
 import javax.inject.Inject
@@ -22,8 +22,9 @@ class EchonApp : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
-        // Keep directly-distributed installs current even when the app is closed.
-        UpdateScheduler.schedule(this)
+        // Direct-download flavor keeps installs current in the background; the Play
+        // flavor supplies a no-op (Play delivers updates and prohibits self-update).
+        scheduleAppUpdates(this)
     }
 
     override fun newImageLoader(): ImageLoader =

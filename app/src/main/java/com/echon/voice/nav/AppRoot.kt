@@ -24,7 +24,7 @@ import com.echon.voice.feature.auth.AuthStore
 import com.echon.voice.feature.auth.EulaScreen
 import com.echon.voice.feature.auth.LoginScreen
 import com.echon.voice.feature.auth.RegisterScreen
-import com.echon.voice.feature.update.UpdatePrompt
+import com.echon.voice.core.updateapi.UpdateGate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -67,8 +67,8 @@ fun AppRoot(
             }
         }
 
-        // Update prompt overlays any phase (direct-download has no Play auto-update).
-        UpdatePrompt()
+        // Update prompt overlays any phase on the direct-download flavor; no-op on Play.
+        UpdateGate()
     }
 }
 

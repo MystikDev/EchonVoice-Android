@@ -43,6 +43,21 @@ android {
         }
     }
 
+    // Two distribution builds of the same app (same applicationId):
+    //  - direct: sideloaded from echon-voice.com, includes the in-app self-updater.
+    //  - play:   Google Play (AAB), with the self-updater + install permissions
+    //            stripped, because Play prohibits apps that update themselves.
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("direct") {
+            dimension = "distribution"
+            isDefault = true
+        }
+        create("play") {
+            dimension = "distribution"
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -113,7 +128,8 @@ dependencies {
 
     implementation(libs.androidx.security.crypto)
 
-    implementation(libs.androidx.work.runtime.ktx)
+    // WorkManager backs the background self-updater, which only exists in `direct`.
+    "directImplementation"(libs.androidx.work.runtime.ktx)
 
     implementation(libs.livekit.android)
 

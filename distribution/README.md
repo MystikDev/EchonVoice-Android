@@ -84,6 +84,22 @@ Release flow each time we ship:
 > and commits the updated `latest.json` to `main`, so the hash always matches the
 > published artifact.
 
+## Build flavors: `direct` vs `play`
+
+The app has two product flavors (same `applicationId` `com.echon.voice`):
+
+| Flavor | Distribution | Self-updater | Build |
+|--------|--------------|--------------|-------|
+| `direct` | Sideload from echon-voice.com (GitHub Releases) | ✅ in-app background updater + install perms | `./gradlew :app:assembleDirectRelease` → APK |
+| `play` | Google Play | ❌ stripped (Play prohibits self-updating apps) | `./gradlew :app:bundlePlayRelease` → AAB |
+
+The `play` flavor omits the updater code, `REQUEST_INSTALL_PACKAGES` /
+`UPDATE_PACKAGES_WITHOUT_USER_ACTION`, `InstallResultReceiver`, and WorkManager;
+Google Play delivers updates instead. Everything else (voice, chat, moderation,
+camera) is identical. The CI release workflow builds the **direct** APK; the Play
+**AAB** is built + uploaded manually to Play Console (Play App Signing re-signs it,
+so the Play build is a separate signing identity from the direct-download APK).
+
 ## Signing (important)
 
 The app is signed with a **release keystore we control** (`app/echon-release.jks`,

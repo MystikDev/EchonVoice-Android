@@ -41,11 +41,11 @@ jobs:
           keyPassword=$KEY_PASSWORD
           EOF
 
-      - name: Build signed release APK
-        run: ./gradlew :app:assembleRelease
+      - name: Build signed release APK (direct-download flavor)
+        run: ./gradlew :app:assembleDirectRelease
 
       - name: Stage APK with stable name
-        run: cp app/build/outputs/apk/release/app-release.apk echon-release.apk
+        run: cp app/build/outputs/apk/direct/release/app-direct-release.apk echon-release.apk
 
       # Derive version + hash from the built APK and commit them into the manifest
       # so the in-app updater's version check and SHA-256 verification always match
