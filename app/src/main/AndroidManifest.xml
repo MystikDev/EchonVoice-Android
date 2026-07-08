@@ -19,6 +19,15 @@
          permission). Remove it: fixes the crash and shrinks the permission surface. -->
     <uses-permission android:name="android.permission.CAMERA" tools:node="remove" />
 
+    <!-- LiveKit also merges the media-projection FGS permission + its
+         ScreenCaptureService for PUBLISHING your own screen. Echon does view-only
+         screen share (it only subscribes to a remote screen track, which needs no
+         MediaProjection), so remove both — keeps the FGS declaration to microphone
+         only and avoids declaring a screen-capture use we don't have. -->
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"
+        tools:node="remove" />
+
     <!-- Camera is used opportunistically (attach a photo); not required to install. -->
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
@@ -63,6 +72,12 @@
             android:name=".feature.voice.CallForegroundService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- Remove LiveKit's own-screen-capture service (view-only screen share
+             never starts it); pairs with removing the media-projection permission. -->
+        <service
+            android:name="io.livekit.android.room.track.screencapture.ScreenCaptureService"
+            tools:node="remove" />
 
         <!-- InstallResultReceiver (self-update) is declared in the `direct` flavor
              manifest only; the `play` flavor has no self-updater. -->

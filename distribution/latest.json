@@ -4,6 +4,6 @@
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Fixes the camera button on Samsung and other devices (a permission conflict was blocking the camera). Taking a photo to post in a channel now works.",
+  "notes": "Removes an unused screen-capture permission (media projection) that the app never used. No user-facing change.",
   "sha256": "4fa084ea2bcbd5e39c2c6f4ac41275ddfd96494b81ef7d5662decb91b75135eb"
 }
