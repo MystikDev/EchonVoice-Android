@@ -79,6 +79,15 @@
             android:name="io.livekit.android.room.track.screencapture.ScreenCaptureService"
             tools:node="remove" />
 
+        <!-- Firebase Cloud Messaging: receives push (message/DM) notifications. -->
+        <service
+            android:name=".core.push.EchonMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- InstallResultReceiver (self-update) is declared in the `direct` flavor
              manifest only; the `play` flavor has no self-updater. -->
 

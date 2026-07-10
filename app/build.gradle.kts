@@ -9,6 +9,14 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+// Firebase Cloud Messaging (push notifications) needs google-services.json from a
+// Firebase project. Apply the plugin only when that file is present, so the repo
+// still builds without it — push is simply inert until the file is dropped in.
+// See distribution/PUSH-NOTIFICATIONS-SETUP.md.
+if (project.file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.echon.voice"
     compileSdk = 35
@@ -127,6 +135,10 @@ dependencies {
     implementation(libs.coil.network.okhttp)
 
     implementation(libs.androidx.security.crypto)
+
+    // Firebase Cloud Messaging for push (message/DM) notifications.
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     // WorkManager backs the background self-updater, which only exists in `direct`.
     "directImplementation"(libs.androidx.work.runtime.ktx)

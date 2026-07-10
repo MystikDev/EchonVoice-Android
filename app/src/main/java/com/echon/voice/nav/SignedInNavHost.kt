@@ -1,10 +1,13 @@
 package com.echon.voice.nav
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -32,6 +35,16 @@ fun SignedInNavHost() {
 
     fun openDm(channelId: String, name: String) {
         nav.navigate("chat/$channelId?channelName=$name&channelKind=dm")
+    }
+
+    // A tapped message notification deep-links here once we're signed in.
+    val deepLinkVm: DeepLinkViewModel = hiltViewModel()
+    val pendingLink by deepLinkVm.pending.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingLink) {
+        val link = pendingLink ?: return@LaunchedEffect
+        val name = android.net.Uri.encode(link.channelName)
+        nav.navigate("chat/${link.channelId}?channelName=$name&channelKind=${link.channelKind}")
+        deepLinkVm.consume()
     }
 
     NavHost(navController = nav, startDestination = "main") {

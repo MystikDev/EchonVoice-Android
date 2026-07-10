@@ -14,3 +14,7 @@ keystore.properties
 
 # Kotlin 2.x build session data
 .kotlin/
+
+# Firebase config (per-developer; drop into app/). Not committed to the public repo.
+google-services.json
+app/google-services.json

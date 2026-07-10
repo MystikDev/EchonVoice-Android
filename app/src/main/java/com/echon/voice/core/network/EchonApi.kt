@@ -210,4 +210,10 @@ interface EchonApi {
 
     @POST("v1/channels/{id}/voice/leave")
     suspend fun leaveVoice(@Path("id") channelId: String)
+
+    // --- Push notifications ---
+
+    /** Registers this device's FCM token for push (message/DM) notifications. */
+    @POST("v1/devices")
+    suspend fun registerDevice(@Body body: com.echon.voice.model.RegisterDeviceRequest)
 }
