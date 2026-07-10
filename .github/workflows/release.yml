@@ -41,6 +41,20 @@ jobs:
           keyPassword=$KEY_PASSWORD
           EOF
 
+      # Firebase config for push notifications. Optional: if the secret isn't set,
+      # the build proceeds with push inert (the plugin is skipped when the file is
+      # absent). When present, released builds have FCM active.
+      - name: Restore Firebase config
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.ECHON_GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 --decode > app/google-services.json
+            echo "Firebase config restored (push enabled)."
+          else
+            echo "No Firebase secret; building with push inert."
+          fi
+
       - name: Build signed release APK (direct-download flavor)
         run: ./gradlew :app:assembleDirectRelease
 
