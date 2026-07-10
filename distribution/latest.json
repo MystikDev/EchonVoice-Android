@@ -1,9 +1,9 @@
 {
-  "version_code": 14,
-  "version_name": "2.0.13",
+  "version_code": 15,
+  "version_name": "2.0.14",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Message & DM notifications are now enabled. You'll be alerted to new messages, mentions, and DMs even when the app is closed.",
-  "sha256": "dc518d178129dc679dc2db4eb8e76102ae886cb5fe1967a93532021331bd9ce3"
+  "sha256": "38b0e9cbe5b349e32cd098fa9371c45badab7f00b15f2232c02c177b0093ac00"
 }
