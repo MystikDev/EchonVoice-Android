@@ -46,7 +46,7 @@ POST /v1/devices
 Authorization: Bearer <access token>
 Content-Type: application/json
 
-{ "token": "<fcm registration token>", "platform": "android" }
+{ "device_token": "<fcm registration token>", "platform": "android" }
 ```
 
 Backend should:
@@ -64,15 +64,21 @@ mention), send an **FCM *data* message** (not a "notification" message) to each 
 the recipient's registered tokens, so the app controls display and deep-linking
 even when backgrounded.
 
-**Data payload keys the client reads** (all strings):
+**Data payload the client reads** (all FCM data values must be strings):
 
 | key | value |
 |-----|-------|
-| `channel_id` | the channel/DM id to open on tap |
-| `channel_kind` | `"dm"` for a direct message; anything else = server channel |
-| `channel_name` | display name (channel or DM peer) |
-| `title` | notification title (e.g. sender or channel name) |
+| `kind` | `"dm"` for a direct message; anything else = server channel (drives the deep-link) |
+| `id` | the channel/DM id to open on tap |
+| `payload` | a **JSON-stringified** object with the display fields (see below) |
+
+`payload` (stringified) contains:
+
+| key | value |
+|-----|-------|
+| `title` | notification title (e.g. sender / channel) |
 | `body` | notification text (message preview) |
+| `name` | channel/DM display name (used for the opened screen's label) |
 
 Example (FCM HTTP v1):
 ```json
@@ -80,16 +86,16 @@ Example (FCM HTTP v1):
   "message": {
     "token": "<device token>",
     "data": {
-      "channel_id": "5b3ab957-4781-4a08-a945-4f5f60a988dc",
-      "channel_kind": "text",
-      "channel_name": "general",
-      "title": "MystikDev in #general",
-      "body": "hey, are you around?"
+      "kind": "text",
+      "id": "5b3ab957-4781-4a08-a945-4f5f60a988dc",
+      "payload": "{\"title\":\"MystikDev in #general\",\"body\":\"hey, are you around?\",\"name\":\"general\"}"
     },
     "android": { "priority": "high" }
   }
 }
 ```
+The client parses `payload` tolerantly (missing fields fall back), but please use
+these exact keys so titles/labels/deep-links are correct.
 
 **Important policy/UX rules for the backend:**
 - **Don't push to a user who has blocked the sender** (the app filters in-UI, but a

@@ -1,18 +1,26 @@
 package com.echon.voice.core.push
 
+import com.echon.voice.core.network.EchonJson
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 
 /**
- * Receives FCM pushes. Data-message payload contract (backend sends these keys):
- *   channel_id, channel_name, channel_kind ("dm" | anything else = server),
- *   title, body. Falls back to the notification block if data keys are absent.
+ * Receives FCM data pushes and posts a message notification.
  *
- * Using data messages (not notification messages) means [onMessageReceived]
- * fires even when the app is backgrounded, so we always control the notification
- * and its deep link.
+ * Server data-message contract (all FCM data values are strings):
+ *   kind    — "dm" for a direct message, otherwise a server channel
+ *   id      — the channel/DM id (deep-link target)
+ *   payload — a JSON-stringified object with the display fields:
+ *             { "title": ..., "body": ..., "name": ... }  (name = channel/DM label)
+ *
+ * Parsing is tolerant: missing/renamed fields fall back to the RemoteMessage
+ * notification block so a slightly different payload still shows *something*.
+ * Using data messages (not notification messages) means this fires even when the
+ * app is backgrounded, so we always control display + deep link.
  */
 @AndroidEntryPoint
 class EchonMessagingService : FirebaseMessagingService() {
@@ -25,13 +33,24 @@ class EchonMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         val data = message.data
-        val title = data["title"] ?: message.notification?.title ?: "New message"
-        val body = data["body"] ?: message.notification?.body ?: ""
+
+        // Inner payload is JSON-stringified (FCM data values must be strings).
+        val payload: Map<String, String> = data["payload"]?.let { raw ->
+            runCatching {
+                EchonJson.parseToJsonElement(raw).jsonObject
+                    .mapValues { it.value.jsonPrimitive.content }
+            }.getOrNull()
+        } ?: emptyMap()
+
+        val name = payload["name"] ?: payload["channel_name"]
+        val title = payload["title"] ?: message.notification?.title ?: name ?: "New message"
+        val body = payload["body"] ?: message.notification?.body.orEmpty()
+
         MessageNotifier.notify(
             context = this,
-            channelId = data["channel_id"],
-            channelName = data["channel_name"],
-            channelKind = data["channel_kind"],
+            channelId = data["id"],
+            channelName = name,
+            channelKind = data["kind"],
             title = title,
             body = body,
         )
