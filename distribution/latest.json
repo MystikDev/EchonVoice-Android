@@ -4,6 +4,6 @@
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Removes an unused screen-capture permission (media projection) that the app never used. No user-facing change.",
+  "notes": "Groundwork for message notifications (activates once the server side is live). Latest fixes included.",
   "sha256": "9351d7c2b70b6b2d7aab32937e65e5888b5c6c1a954660242781d193b0090226"
 }
