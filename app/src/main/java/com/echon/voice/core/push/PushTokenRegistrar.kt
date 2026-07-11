@@ -57,11 +57,11 @@ class PushTokenRegistrar @Inject constructor(
 
     private suspend fun register(token: String) {
         try {
-            apiCall { api.registerDevice(RegisterDeviceRequest(token = token)) }
+            apiCall { api.registerDevice(RegisterDeviceRequest(deviceToken = token, platform = "android")) }
+            Log.i(TAG, "device token registered")
         } catch (e: ApiException.Unauthorized) {
-            // Signed out between check and call; ignore.
+            // Signed out between the check and the call; ignore.
         } catch (e: Exception) {
-            // Backend endpoint may not exist yet — don't disrupt the app.
             Log.w(TAG, "device token registration failed", e)
         }
     }
