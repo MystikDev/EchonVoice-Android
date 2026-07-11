@@ -1,9 +1,9 @@
 {
-  "version_code": 15,
-  "version_name": "2.0.14",
+  "version_code": 16,
+  "version_name": "2.0.15",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Fixes message & DM notifications (a device-registration bug prevented them from arriving).",
-  "sha256": "38b0e9cbe5b349e32cd098fa9371c45badab7f00b15f2232c02c177b0093ac00"
+  "sha256": "897cb7655b8a0c80c816e369d0f3435523dd89a36fdc11fa481df8e09be4d129"
 }
