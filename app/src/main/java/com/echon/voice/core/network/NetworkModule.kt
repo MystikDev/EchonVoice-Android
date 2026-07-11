@@ -40,11 +40,12 @@ object NetworkModule {
     @Provides
     @Singleton
     @Named("refresh")
-    fun provideRefreshClient(): OkHttpClient =
+    fun provideRefreshClient(refreshCookie: RefreshCookieInterceptor): OkHttpClient =
         OkHttpClient.Builder()
             .certificatePinner(TlsPinning.certificatePinner())
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(refreshCookie) // capture the rotated refresh_token cookie
             .addInterceptor(logging())
             .build()
 
@@ -69,6 +70,7 @@ object NetworkModule {
     fun provideOkHttpClient(
         authInterceptor: AuthInterceptor,
         authenticator: TokenAuthenticator,
+        refreshCookie: RefreshCookieInterceptor,
     ): OkHttpClient =
         OkHttpClient.Builder()
             .certificatePinner(TlsPinning.certificatePinner())
@@ -76,6 +78,7 @@ object NetworkModule {
             .readTimeout(30, TimeUnit.SECONDS)
             .addInterceptor(authInterceptor)
             .authenticator(authenticator)
+            .addInterceptor(refreshCookie) // capture the refresh_token cookie from login
             .addInterceptor(logging())
             .build()
 

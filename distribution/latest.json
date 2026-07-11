@@ -4,6 +4,6 @@
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Fixes message & DM notifications (a device-registration bug prevented them from arriving).",
+  "notes": "Fixes staying signed in \u2014 you'll no longer be logged out when you close the app. You stay logged in until you choose to log out.",
   "sha256": "897cb7655b8a0c80c816e369d0f3435523dd89a36fdc11fa481df8e09be4d129"
 }

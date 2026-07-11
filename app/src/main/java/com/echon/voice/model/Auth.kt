@@ -1,13 +1,19 @@
 package com.echon.voice.model
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
 /** POST /v1/auth/login body. `remember_me` extends the refresh token to 60 days. */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class LoginRequest(
     val email: String,
     val password: String,
-    val rememberMe: Boolean = true,
+    // @EncodeDefault forces this to serialize even though EchonJson has
+    // encodeDefaults=false; otherwise the default is dropped and the user gets a
+    // 14-day (not 60-day) refresh token.
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS) val rememberMe: Boolean = true,
 )
 
 /** POST /v1/auth/register body. `date_of_birth` is required (YYYY-MM-DD). */

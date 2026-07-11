@@ -39,6 +39,20 @@ class SessionStore @Inject constructor(
         storage.refreshToken = refresh
     }
 
+    /**
+     * Absorb the rotating `refresh_token` the backend sets as an HttpOnly cookie
+     * on login and refresh. This is the ONLY way the app receives the refresh
+     * token — it is not in any response body — so without it the session can't
+     * survive the 15-minute access token expiring, and the user is signed out on
+     * the next launch. Persisted so it restores across app restarts.
+     */
+    @Synchronized
+    fun onRefreshCookie(token: String) {
+        if (token.isEmpty() || token == refresh) return
+        refresh = token
+        storage.refreshToken = token
+    }
+
     /** Update just the access token (and rotated refresh) after a successful refresh. */
     @Synchronized
     fun updateAfterRefresh(access: String, rotatedRefresh: String?) {
