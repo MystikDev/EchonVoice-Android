@@ -35,7 +35,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.echon.voice.core.designsystem.Avatar
-import com.echon.voice.core.designsystem.EchonColors
 import com.echon.voice.core.realtime.RealtimeStore
 import com.echon.voice.feature.voice.VoiceStore
 import com.echon.voice.model.ChannelKind
@@ -98,7 +97,7 @@ fun ServersScreen(
                     .background(MaterialTheme.colorScheme.background)
                     .clickable { showJoin = true },
                 contentAlignment = Alignment.Center,
-            ) { Text("+", color = EchonColors.Primary, fontWeight = FontWeight.Bold) }
+            ) { Text("+", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
         }
 
         // Channel list (observed so it recomposes when channels finish loading)
@@ -109,8 +108,8 @@ fun ServersScreen(
             selectedId?.let { sid ->
                 item {
                     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text("Members", color = EchonColors.Primary, modifier = Modifier.clickable { onOpenMembers(sid) })
-                        Text("Invite", color = EchonColors.Primary, modifier = Modifier.clickable { inviteChannelId = text.firstOrNull()?.id })
+                        Text("Members", color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { onOpenMembers(sid) })
+                        Text("Invite", color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { inviteChannelId = text.firstOrNull()?.id })
                     }
                 }
             }
@@ -159,7 +158,7 @@ private fun ServerIcon(server: Server, selected: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .size(48.dp)
             .clip(shape)
-            .background(if (selected) EchonColors.Primary else MaterialTheme.colorScheme.background)
+            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -193,7 +192,7 @@ private fun ChannelRow(prefix: String, name: String, hasUnread: Boolean, trailin
             Text(trailing, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (hasUnread) {
-            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(EchonColors.Primary))
+            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
         }
     }
 }

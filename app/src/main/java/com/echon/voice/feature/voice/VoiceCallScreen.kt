@@ -48,7 +48,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.echon.voice.core.designsystem.EchonColors
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.livekit.android.renderer.SurfaceViewRenderer
 import io.livekit.android.room.Room
@@ -162,14 +161,14 @@ private fun ParticipantTile(p: CallParticipant) {
             .aspectRatio(1f)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .then(if (p.isSpeaking) Modifier.border(2.dp, EchonColors.Primary, RoundedCornerShape(16.dp)) else Modifier),
+            .then(if (p.isSpeaking) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(EchonColors.Primary)
+                    .background(MaterialTheme.colorScheme.primary)
                     .padding(16.dp),
             ) {
                 Text((p.name.firstOrNull()?.uppercase() ?: "?"), color = Color.White, fontWeight = FontWeight.Bold)

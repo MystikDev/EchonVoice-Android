@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.border
 import coil.compose.SubcomposeAsyncImage
 import com.echon.voice.core.designsystem.Avatar
-import com.echon.voice.core.designsystem.EchonColors
 import com.echon.voice.model.Attachment
 import com.echon.voice.model.Message
 import com.echon.voice.model.Reaction
@@ -184,8 +183,8 @@ private fun ReactionsRow(reactions: List<Reaction>, myUserId: String?, onToggle:
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .then(if (mine) Modifier.border(1.dp, EchonColors.Primary, RoundedCornerShape(50)) else Modifier)
-                    .background(if (mine) EchonColors.Primary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surface)
+                    .then(if (mine) Modifier.border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(50)) else Modifier)
+                    .background(if (mine) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surface)
                     .clickable { reaction.emojiKey?.let(onToggle) }
                     .padding(horizontal = 8.dp, vertical = 4.dp)
                     .wrapContentWidth(),
@@ -195,7 +194,7 @@ private fun ReactionsRow(reactions: List<Reaction>, myUserId: String?, onToggle:
                     "${reaction.count ?: 0}",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (mine) EchonColors.Primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (mine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

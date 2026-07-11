@@ -1,11 +1,15 @@
 package com.echon.voice.feature.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -48,8 +52,16 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val authStore: AuthStore,
     private val api: EchonApi,
+    private val appPreferences: com.echon.voice.core.storage.AppPreferences,
 ) : ViewModel() {
     val currentUser = authStore.currentUser
+
+    val skinEnabled = appPreferences.skinEnabled
+    val paletteId = appPreferences.paletteId
+    fun setSkinEnabled(enabled: Boolean) = appPreferences.setSkinEnabled(enabled)
+    fun setPalette(id: String) = appPreferences.setPalette(id)
+
+    val versionLabel: String = "${com.echon.voice.BuildConfig.VERSION_NAME} (${com.echon.voice.BuildConfig.VERSION_CODE})"
 
     var deletePassword by mutableStateOf("")
     var deleteError by mutableStateOf<String?>(null)
@@ -116,11 +128,23 @@ fun SettingsScreen(
             SettingsRow(title = "Blocked users", onClick = onOpenBlockedUsers)
             HorizontalDivider()
 
+            AppearanceSection(viewModel)
+            HorizontalDivider()
+
             SettingsRow(
                 title = "Delete account",
                 destructive = true,
                 onClick = { showDeleteDialog = true },
             )
+            HorizontalDivider()
+
+            androidx.compose.foundation.layout.Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp),
+            ) {
+                Text("Version", modifier = Modifier.weight(1f))
+                Text(viewModel.versionLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             HorizontalDivider()
 
             OutlinedButton(
@@ -144,6 +168,93 @@ fun SettingsScreen(
         )
     }
 }
+
+@Composable
+private fun AppearanceSection(viewModel: SettingsViewModel) {
+    val skinOn by viewModel.skinEnabled.collectAsStateWithLifecycle()
+    val paletteId by viewModel.paletteId.collectAsStateWithLifecycle()
+
+    androidx.compose.foundation.layout.Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { viewModel.setSkinEnabled(!skinOn) }
+            .padding(horizontal = 24.dp, vertical = 14.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text("8-bit skin")
+            Text(
+                "Retro pixel theme",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        androidx.compose.material3.Switch(
+            checked = skinOn,
+            onCheckedChange = { viewModel.setSkinEnabled(it) },
+        )
+    }
+
+    if (skinOn) {
+        Text(
+            "Palette",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 24.dp, top = 4.dp, bottom = 8.dp),
+        )
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp),
+        ) {
+            com.echon.voice.core.designsystem.EchonPalettes.all.forEach { palette ->
+                PaletteSwatch(
+                    palette = palette,
+                    selected = palette.id == paletteId,
+                    onClick = { viewModel.setPalette(palette.id) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaletteSwatch(
+    palette: com.echon.voice.core.designsystem.EchonPalette,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(56.dp).clickable(onClick = onClick),
+    ) {
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier
+                .size(48.dp)
+                .swatchBorder(selected)
+                .background(palette.background),
+            contentAlignment = Alignment.Center,
+        ) {
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier.size(22.dp).background(palette.primary),
+            )
+        }
+        Text(
+            palette.name,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
+
+private fun Modifier.swatchBorder(selected: Boolean): Modifier = border(
+    width = if (selected) 3.dp else 1.dp,
+    color = if (selected) androidx.compose.ui.graphics.Color(0xFFFFFFFF) else androidx.compose.ui.graphics.Color(0x33FFFFFF),
+)
 
 @Composable
 private fun SettingsRow(

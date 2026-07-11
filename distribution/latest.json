@@ -4,6 +4,6 @@
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Fixes staying signed in \u2014 you'll no longer be logged out when you close the app. You stay logged in until you choose to log out.",
+  "notes": "New: an optional 8-bit retro skin! Turn it on in Settings and pick from 8 pixel-art palettes (Game Boy, NES, C64, Synthwave, and more). Also shows the app version in Settings.",
   "sha256": "9c06c90037f44a579ae22b305a495804f79de2450c5249d7774188ba6202dd66"
 }

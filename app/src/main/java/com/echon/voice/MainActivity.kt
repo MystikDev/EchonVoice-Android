@@ -10,11 +10,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.echon.voice.core.designsystem.EchonPalettes
 import com.echon.voice.core.designsystem.EchonTheme
 import com.echon.voice.core.push.ChatDeepLink
 import com.echon.voice.core.push.DeepLinkStore
 import com.echon.voice.core.push.MessageNotifier
+import com.echon.voice.core.storage.AppPreferences
 import com.echon.voice.nav.AppRoot
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -30,6 +34,7 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* best-effort */ }
 
     @Inject lateinit var deepLinkStore: DeepLinkStore
+    @Inject lateinit var appPreferences: AppPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,7 +49,10 @@ class MainActivity : ComponentActivity() {
         handleNotificationIntent(intent)
         enableEdgeToEdge()
         setContent {
-            EchonTheme {
+            val retro by appPreferences.skinEnabled.collectAsStateWithLifecycle()
+            val paletteId by appPreferences.paletteId.collectAsStateWithLifecycle()
+            val palette = if (retro) EchonPalettes.byId(paletteId) else EchonPalettes.Default
+            EchonTheme(palette = palette, retro = retro) {
                 AppRoot()
             }
         }
