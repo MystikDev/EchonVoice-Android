@@ -1,9 +1,9 @@
 {
-  "version_code": 16,
-  "version_name": "2.0.15",
+  "version_code": 17,
+  "version_name": "2.0.16",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Fixes staying signed in \u2014 you'll no longer be logged out when you close the app. You stay logged in until you choose to log out.",
-  "sha256": "897cb7655b8a0c80c816e369d0f3435523dd89a36fdc11fa481df8e09be4d129"
+  "sha256": "9c06c90037f44a579ae22b305a495804f79de2450c5249d7774188ba6202dd66"
 }
