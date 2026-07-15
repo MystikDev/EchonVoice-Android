@@ -4,6 +4,6 @@
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Security hardening: closes an access-token leak to third-party image hosts, patches a vulnerable dependency (protobuf CVE), caps upload sizes, validates notification deep-links, and refreshes TLS pins. No user-facing changes.",
+  "notes": "Updates the voice engine (LiveKit SDK 2.11 to 2.27) with the latest upstream stability and audio fixes. No user-facing changes.",
   "sha256": "23a9956745f886be01ac12b6067e663ee227436eab9448aba84885e82a2a5723"
 }

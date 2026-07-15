@@ -25,8 +25,8 @@ android {
         applicationId = "com.echon.voice"
         minSdk = 24
         targetSdk = 35
-        versionCode = 19
-        versionName = "2.0.18"
+        versionCode = 20
+        versionName = "2.0.19"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -146,9 +146,9 @@ dependencies {
     implementation(libs.livekit.android)
 
     // CVE-2024-7254 (GHSA-735f-pc8j-v9w8): protobuf-javalite < 3.25.5 has a
-    // parser DoS via deeply nested fields. LiveKit 2.11.0 transitively pulls
-    // 3.22.0; force it up to a patched release without the risky LiveKit major
-    // upgrade. Revisit when moving to a current LiveKit that ships a safe version.
+    // parser DoS via deeply nested fields. LiveKit (still true of 2.27.0)
+    // transitively declares 3.22.0; force it up to a patched release. Keep this
+    // until a LiveKit release ships a safe protobuf on its own.
     constraints {
         implementation("com.google.protobuf:protobuf-javalite:3.25.5") {
             because("CVE-2024-7254: patch the transitive protobuf-javalite DoS")
