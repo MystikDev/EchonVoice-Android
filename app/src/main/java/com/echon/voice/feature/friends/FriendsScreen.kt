@@ -29,6 +29,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.echon.voice.core.designsystem.Avatar
+import com.echon.voice.core.designsystem.AvatarWithPresence
+import com.echon.voice.core.realtime.RealtimeStore
 import com.echon.voice.model.FriendRequest
 import com.echon.voice.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,10 +40,12 @@ import javax.inject.Inject
 @HiltViewModel
 class FriendsViewModel @Inject constructor(
     private val friends: FriendsStore,
+    realtime: RealtimeStore,
 ) : ViewModel() {
     val friendList = friends.friends
     val incoming = friends.incoming
     val outgoing = friends.outgoing
+    val presence = realtime.presence
 
     var handle by mutableStateOf("")
     var status by mutableStateOf<String?>(null)
@@ -70,6 +74,7 @@ fun FriendsScreen(
     val friends by viewModel.friendList.collectAsStateWithLifecycle()
     val incoming by viewModel.incoming.collectAsStateWithLifecycle()
     val outgoing by viewModel.outgoing.collectAsStateWithLifecycle()
+    val presence by viewModel.presence.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         Text("Add friend", style = MaterialTheme.typography.titleMedium)
@@ -111,7 +116,7 @@ fun FriendsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Avatar(user = friend, size = 36.dp)
+                    AvatarWithPresence(user = friend, status = presence[friend.id], size = 36.dp)
                     Column(modifier = Modifier.weight(1f)) {
                         Text(friend.username ?: "Unknown")
                         Text(friend.displayHandle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

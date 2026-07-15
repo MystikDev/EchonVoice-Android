@@ -22,7 +22,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.echon.voice.core.designsystem.Avatar
+import com.echon.voice.core.designsystem.AvatarWithPresence
+import com.echon.voice.core.realtime.RealtimeStore
 import com.echon.voice.feature.auth.AuthStore
 import com.echon.voice.feature.moderation.BlocksStore
 import com.echon.voice.model.DMConversation
@@ -39,8 +40,10 @@ class DMsViewModel @Inject constructor(
     private val dms: DMsStore,
     blocks: BlocksStore,
     private val auth: AuthStore,
+    realtime: RealtimeStore,
 ) : ViewModel() {
     val myId: String? get() = auth.currentUser.value?.id
+    val presence = realtime.presence
 
     val conversations: StateFlow<List<DMConversation>> =
         combine(dms.conversations, blocks.blockedIds, auth.currentUser) { convos, blocked, me ->
@@ -61,6 +64,7 @@ fun DMListScreen(
     viewModel: DMsViewModel = hiltViewModel(),
 ) {
     val conversations by viewModel.conversations.collectAsStateWithLifecycle()
+    val presence by viewModel.presence.collectAsStateWithLifecycle()
 
     if (conversations.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -81,7 +85,14 @@ fun DMListScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Avatar(user = other, size = 44.dp)
+                // As on iOS, DM rows only show a dot once presence is known
+                // (group DMs have no single "other" user, so none there).
+                AvatarWithPresence(
+                    user = other,
+                    status = other?.id?.let { presence[it] },
+                    size = 44.dp,
+                    showWhenUnknown = false,
+                )
                 Column {
                     Text(name, style = MaterialTheme.typography.bodyLarge)
                     other?.displayHandle?.let {
