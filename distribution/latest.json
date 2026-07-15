@@ -1,9 +1,9 @@
 {
-  "version_code": 19,
-  "version_name": "2.0.18",
+  "version_code": 20,
+  "version_name": "2.0.19",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Updates the voice engine (LiveKit SDK 2.11 to 2.27) with the latest upstream stability and audio fixes. No user-facing changes.",
-  "sha256": "23a9956745f886be01ac12b6067e663ee227436eab9448aba84885e82a2a5723"
+  "sha256": "fed437cbb7ca5c2fc11070fe9b5f124dce4b169fca8e595681d54e528dfab353"
 }
