@@ -4,6 +4,6 @@
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Updates the voice engine (LiveKit SDK 2.11 to 2.27) with the latest upstream stability and audio fixes. No user-facing changes.",
+  "notes": "See at a glance whether your friends are online: presence dots on avatars in the Friends and DM lists (green online, amber idle, gray offline).",
   "sha256": "fed437cbb7ca5c2fc11070fe9b5f124dce4b169fca8e595681d54e528dfab353"
 }
