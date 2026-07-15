@@ -14,6 +14,7 @@ import com.echon.voice.feature.auth.AuthStore
 import com.echon.voice.feature.moderation.BlocksStore
 import com.echon.voice.model.ChatChannelKind
 import com.echon.voice.model.Message
+import com.echon.voice.core.util.readBytesCapped
 import com.echon.voice.model.OutgoingAttachment
 import com.echon.voice.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -167,7 +168,10 @@ class ChatViewModel @Inject constructor(
                 val resolver = context.contentResolver
                 val results = withContext(Dispatchers.IO) {
                     uris.take(10 - pending.size).mapNotNull { uri ->
-                        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: return@mapNotNull null
+                        // Cap the actual streamed bytes so a huge/malicious file can't OOM the app.
+                        val bytes = resolver.openInputStream(uri)?.use {
+                            it.readBytesCapped(com.echon.voice.core.util.UploadLimits.ATTACHMENT_MAX_BYTES)
+                        } ?: return@mapNotNull null
                         val mime = resolver.getType(uri) ?: "application/octet-stream"
                         val ext = mime.substringAfter('/', "bin")
                         val name = "photo-${System.nanoTime()}.$ext"

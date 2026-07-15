@@ -42,6 +42,7 @@ import com.echon.voice.core.designsystem.Avatar
 import com.echon.voice.core.network.ApiException
 import com.echon.voice.core.network.EchonApi
 import com.echon.voice.core.network.apiCall
+import com.echon.voice.core.util.readBytesCapped
 import com.echon.voice.feature.auth.AuthStore
 import com.echon.voice.model.ChangePasswordRequest
 import com.echon.voice.model.OutgoingAttachment
@@ -81,7 +82,9 @@ class ProfileEditViewModel @Inject constructor(
             busy = true; status = null
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: error("read failed")
+                    val bytes = context.contentResolver.openInputStream(uri)?.use {
+                        it.readBytesCapped(com.echon.voice.core.util.UploadLimits.AVATAR_MAX_BYTES)
+                    } ?: error("avatar too large or unreadable")
                     val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
                     val part = MultipartBody.Part.createFormData("file", "avatar.${mime.substringAfter('/', "jpg")}", bytes.toRequestBody(mime.toMediaTypeOrNull()))
                     val purpose = "avatar".toRequestBody("text/plain".toMediaTypeOrNull())

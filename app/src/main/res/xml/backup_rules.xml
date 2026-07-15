@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Legacy (pre-Android 12) backup content. Backup is disabled globally; this
+     also excludes the encrypted session store as defense in depth. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="echon-session.xml" />
+</full-backup-content>

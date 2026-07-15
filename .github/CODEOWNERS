@@ -1,0 +1,9 @@
+# Default owner for everything.
+* @MystikDev
+
+# Workflow + build/signing config changes require owner review (enforced once a
+# branch/tag ruleset with "require review from Code Owners" is enabled on main).
+/.github/ @MystikDev
+/gradle/ @MystikDev
+/app/build.gradle.kts @MystikDev
+/distribution/ @MystikDev

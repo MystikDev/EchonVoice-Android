@@ -22,10 +22,12 @@ object NetworkModule {
     private fun logging(): HttpLoggingInterceptor =
         HttpLoggingInterceptor().apply {
             // Never emit session credentials to logcat, even in debug builds:
-            // HEADERS would otherwise print the bearer and the rotating refresh
-            // token to any app/user with READ_LOGS or `adb logcat`.
+            // HEADERS would otherwise print the bearer, the rotating refresh token,
+            // and the refresh_token cookie to anyone with READ_LOGS / `adb logcat`.
             redactHeader("Authorization")
             redactHeader("X-Refresh-Token")
+            redactHeader("Cookie")
+            redactHeader("Set-Cookie")
             level = if (BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.HEADERS
             } else {
@@ -62,6 +64,23 @@ object NetworkModule {
         OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
+            .build()
+
+    /**
+     * Media client for Coil (avatars/attachments). Pinned so echon-voice.com media
+     * still fails closed, but carries NO session credentials, NO 401 authenticator,
+     * and does NOT capture refresh cookies — so an absolute image URL to a
+     * third-party host can never receive the bearer or poison the session.
+     */
+    @Provides
+    @Singleton
+    @Named("media")
+    fun provideMediaClient(): OkHttpClient =
+        OkHttpClient.Builder()
+            .certificatePinner(TlsPinning.certificatePinner())
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(logging())
             .build()
 
     /** Primary pinned client: bearer attach + 401 refresh/retry. */

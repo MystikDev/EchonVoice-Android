@@ -26,6 +26,11 @@ class TokenAuthenticator @Inject constructor(
 
     @Synchronized
     override fun authenticate(route: Route?, response: Response): Request? {
+        // Only ever refresh + retry with credentials against the Echon API. Coil
+        // and any absolute media URL can 401 from a third-party host; without this
+        // guard OkHttp would re-send the request WITH the victim's bearer attached.
+        if (!TlsPinning.isApiHost(response.request.url.host)) return null
+
         // Give up after one retry to avoid infinite 401 loops.
         if (priorResponseCount(response) >= 2) return null
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ backup/transfer policy. Backup is disabled globally
+  (android:allowBackup="false"), so cloud-backup here is moot, but device-to-device
+  transfer is governed separately — explicitly exclude the encrypted session store
+  so tokens never ride along to another device.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="echon-session.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="echon-session.xml" />
+    </device-transfer>
+</data-extraction-rules>

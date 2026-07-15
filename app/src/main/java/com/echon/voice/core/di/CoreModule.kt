@@ -1,5 +1,7 @@
 package com.echon.voice.core.di
 
+import com.echon.voice.core.storage.SecureTokenStore
+import com.echon.voice.core.storage.TokenStorage
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -29,4 +31,9 @@ object CoreModule {
     @ApplicationScope
     fun provideApplicationScope(): CoroutineScope =
         CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** Binds the encrypted store as the token persistence boundary. */
+    @Provides
+    @Singleton
+    fun provideTokenStorage(impl: SecureTokenStore): TokenStorage = impl
 }

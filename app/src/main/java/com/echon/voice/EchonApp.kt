@@ -8,18 +8,19 @@ import com.echon.voice.core.updateapi.scheduleAppUpdates
 import dagger.hilt.android.HiltAndroidApp
 import okhttp3.OkHttpClient
 import javax.inject.Inject
+import javax.inject.Named
 
 /**
  * Application entry point. Hilt's object graph roots here; the singleton-scoped
  * stores are the Android analog of the iOS `AppState` composition root.
  *
- * Also supplies Coil's [ImageLoader] backed by the pinned OkHttp client, so all
- * image loads (avatars, attachments) honor certificate pinning — the analog of
- * the iOS `RemoteImage` going through the pinned session instead of AsyncImage.
+ * Supplies Coil's [ImageLoader] backed by the pinned but UNAUTHENTICATED media
+ * client, so image loads honor certificate pinning without ever carrying the
+ * session bearer or capturing auth cookies to a third-party image host.
  */
 @HiltAndroidApp
 class EchonApp : Application(), ImageLoaderFactory {
-    @Inject lateinit var okHttpClient: OkHttpClient
+    @Inject @Named("media") lateinit var mediaClient: OkHttpClient
     @Inject lateinit var pushTokenRegistrar: PushTokenRegistrar
 
     override fun onCreate() {
@@ -34,7 +35,7 @@ class EchonApp : Application(), ImageLoaderFactory {
 
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
-            .okHttpClient(okHttpClient)
+            .okHttpClient(mediaClient)
             .crossfade(true)
             .build()
 }

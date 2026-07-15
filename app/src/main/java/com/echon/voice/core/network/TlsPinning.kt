@@ -32,6 +32,14 @@ import okhttp3.CertificatePinner
 object TlsPinning {
     const val HOST = "echon-voice.com"
 
+    /**
+     * Whether [host] is the Echon API origin (the host itself or a subdomain).
+     * The single gate for attaching credentials / accepting auth cookies — used by
+     * the auth interceptor, the 401 authenticator, and the refresh-cookie capture
+     * so none of them ever trust a third-party host (e.g. an image URL).
+     */
+    fun isApiHost(host: String): Boolean = host == HOST || host.endsWith(".$HOST")
+
     /** ISRG Root X1 SPKI SHA-256. */
     const val ISRG_ROOT_X1 = "sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M="
 
@@ -40,7 +48,10 @@ object TlsPinning {
 
     fun certificatePinner(): CertificatePinner =
         CertificatePinner.Builder()
-            // `**` also covers subdomains (matches includeSubdomains on iOS/netsec).
+            // Two entries: the apex host, plus `*.` which in OkHttp matches exactly
+            // one subdomain level (api., ws., etc.). All Echon endpoints live on the
+            // apex or a single-level subdomain, so this is sufficient; add `**.` only
+            // if a multi-level host is ever introduced.
             .add(HOST, ISRG_ROOT_X1, ISRG_ROOT_X2)
             .add("*.$HOST", ISRG_ROOT_X1, ISRG_ROOT_X2)
             .build()

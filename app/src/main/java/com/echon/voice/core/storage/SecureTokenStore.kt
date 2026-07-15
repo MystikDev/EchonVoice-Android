@@ -7,6 +7,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** Persistence boundary for the session tokens (fakeable in unit tests). */
+interface TokenStorage {
+    var accessToken: String?
+    var refreshToken: String?
+    fun clear()
+}
+
 /**
  * Encrypted persistence for the session tokens — the Android analog of the iOS
  * `KeychainStore`. Backed by [EncryptedSharedPreferences] (AES-256), keyed by a
@@ -16,7 +23,7 @@ import javax.inject.Singleton
 @Singleton
 class SecureTokenStore @Inject constructor(
     @ApplicationContext context: Context,
-) {
+) : TokenStorage {
     private val prefs by lazy {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -30,15 +37,15 @@ class SecureTokenStore @Inject constructor(
         )
     }
 
-    var accessToken: String?
+    override var accessToken: String?
         get() = prefs.getString(KEY_ACCESS, null)
         set(value) = prefs.edit().apply { if (value == null) remove(KEY_ACCESS) else putString(KEY_ACCESS, value) }.apply()
 
-    var refreshToken: String?
+    override var refreshToken: String?
         get() = prefs.getString(KEY_REFRESH, null)
         set(value) = prefs.edit().apply { if (value == null) remove(KEY_REFRESH) else putString(KEY_REFRESH, value) }.apply()
 
-    fun clear() {
+    override fun clear() {
         prefs.edit().remove(KEY_ACCESS).remove(KEY_REFRESH).apply()
     }
 

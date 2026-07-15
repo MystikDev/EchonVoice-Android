@@ -64,16 +64,20 @@ class MainActivity : ComponentActivity() {
         handleNotificationIntent(intent)
     }
 
-    /** A tapped message notification carries the target conversation; route to it. */
+    /**
+     * A tapped message notification carries the target conversation; route to it.
+     * This activity is the exported launcher, so ANY app can hand it these extras —
+     * validate strictly: the channel id must be a UUID and the kind a known token,
+     * or we ignore the deep link entirely (prevents spoofed/ malformed navigation).
+     */
     private fun handleNotificationIntent(intent: Intent?) {
         val channelId = intent?.getStringExtra(MessageNotifier.EXTRA_CHANNEL_ID) ?: return
-        deepLinkStore.submit(
-            ChatDeepLink(
-                channelId = channelId,
-                channelName = intent.getStringExtra(MessageNotifier.EXTRA_CHANNEL_NAME) ?: "channel",
-                channelKind = intent.getStringExtra(MessageNotifier.EXTRA_CHANNEL_KIND) ?: "server",
-            ),
-        )
+        if (!UUID_REGEX.matches(channelId)) return
+        val kind = intent.getStringExtra(MessageNotifier.EXTRA_CHANNEL_KIND)
+            ?.takeIf { it in ALLOWED_KINDS } ?: "server"
+        val name = intent.getStringExtra(MessageNotifier.EXTRA_CHANNEL_NAME)
+            ?.take(120) ?: "channel"
+        deepLinkStore.submit(ChatDeepLink(channelId = channelId, channelName = name, channelKind = kind))
     }
 
     /**
@@ -86,5 +90,11 @@ class MainActivity : ComponentActivity() {
         val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
             PackageManager.PERMISSION_GRANTED
         if (!granted) requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private companion object {
+        val UUID_REGEX =
+            Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+        val ALLOWED_KINDS = setOf("dm", "server", "text", "mention", "reply", "thread_update")
     }
 }

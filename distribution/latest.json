@@ -4,6 +4,6 @@
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "New: an optional 8-bit retro skin! Turn it on in Settings and pick from 8 pixel-art palettes (Game Boy, NES, C64, Synthwave, and more). Also shows the app version in Settings.",
+  "notes": "Security hardening: closes an access-token leak to third-party image hosts, patches a vulnerable dependency (protobuf CVE), caps upload sizes, validates notification deep-links, and refreshes TLS pins. No user-facing changes.",
   "sha256": "5fb3358e1734361f4b594d663f9d0c63a775401641fb408f53c5e6ab87b31cbf"
 }

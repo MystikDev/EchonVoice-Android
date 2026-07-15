@@ -1,6 +1,6 @@
 package com.echon.voice.core.network
 
-import com.echon.voice.core.storage.SecureTokenStore
+import com.echon.voice.core.storage.TokenStorage
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import javax.inject.Inject
@@ -14,7 +14,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class SessionStore @Inject constructor(
-    private val storage: SecureTokenStore,
+    private val storage: TokenStorage,
 ) {
     @Volatile
     private var access: String? = storage.accessToken

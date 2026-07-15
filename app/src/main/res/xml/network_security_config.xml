@@ -16,7 +16,13 @@
     </base-config>
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">echon-voice.com</domain>
-        <pin-set expiration="2027-01-01">
+        <!--
+          Expiry pushed to 2028-06-01 (was 2027-01-01, which would soon stop
+          enforcing pins). Both ISRG roots are pinned so one already backs up the
+          other; the roots are valid into the 2030s. ROTATE this date + re-verify
+          the pins before the deadline.
+        -->
+        <pin-set expiration="2028-06-01">
             <!-- ISRG Root X1 -->
             <pin digest="SHA-256">C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=</pin>
             <!-- ISRG Root X2 -->

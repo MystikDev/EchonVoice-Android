@@ -34,16 +34,21 @@ fun SignedInNavHost() {
     var reportUser by remember { mutableStateOf<User?>(null) }
 
     fun openDm(channelId: String, name: String) {
-        nav.navigate("chat/$channelId?channelName=$name&channelKind=dm")
+        val encodedId = android.net.Uri.encode(channelId)
+        val encodedName = android.net.Uri.encode(name)
+        nav.navigate("chat/$encodedId?channelName=$encodedName&channelKind=dm")
     }
 
-    // A tapped message notification deep-links here once we're signed in.
+    // A tapped message notification deep-links here once we're signed in. The
+    // extras were already validated in MainActivity; encode every arg regardless.
     val deepLinkVm: DeepLinkViewModel = hiltViewModel()
     val pendingLink by deepLinkVm.pending.collectAsStateWithLifecycle()
     LaunchedEffect(pendingLink) {
         val link = pendingLink ?: return@LaunchedEffect
+        val id = android.net.Uri.encode(link.channelId)
         val name = android.net.Uri.encode(link.channelName)
-        nav.navigate("chat/${link.channelId}?channelName=$name&channelKind=${link.channelKind}")
+        val kind = android.net.Uri.encode(link.channelKind)
+        nav.navigate("chat/$id?channelName=$name&channelKind=$kind")
         deepLinkVm.consume()
     }
 
