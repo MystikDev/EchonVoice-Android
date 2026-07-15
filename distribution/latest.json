@@ -1,9 +1,9 @@
 {
-  "version_code": 18,
-  "version_name": "2.0.17",
+  "version_code": 19,
+  "version_name": "2.0.18",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Security hardening: closes an access-token leak to third-party image hosts, patches a vulnerable dependency (protobuf CVE), caps upload sizes, validates notification deep-links, and refreshes TLS pins. No user-facing changes.",
-  "sha256": "5fb3358e1734361f4b594d663f9d0c63a775401641fb408f53c5e6ab87b31cbf"
+  "sha256": "23a9956745f886be01ac12b6067e663ee227436eab9448aba84885e82a2a5723"
 }
