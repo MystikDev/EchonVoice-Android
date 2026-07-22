@@ -2,6 +2,7 @@ package com.echon.voice.feature.voice
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -10,18 +11,26 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -65,11 +74,16 @@ class VoiceCallViewModel @Inject constructor(
     val state = store.state
     val participants = store.participants
     val isMuted = store.isMuted
-    val screenShareTrack = store.screenShareTrack
+    val isCameraOn = store.isCameraOn
+    val liveStreams = store.liveStreams
+    val publishError = store.publishError
     val room: Room? get() = store.room
 
     fun join() = store.join(channelId, channelName)
     fun toggleMute() = store.toggleMute()
+    fun toggleCamera() = store.toggleCamera()
+    fun flipCamera() = store.flipCamera()
+    fun clearPublishError() = store.clearPublishError()
     fun leave() = store.leave()
 }
 
@@ -82,24 +96,40 @@ fun VoiceCallScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val participants by viewModel.participants.collectAsStateWithLifecycle()
     val isMuted by viewModel.isMuted.collectAsStateWithLifecycle()
-    val screenTrack by viewModel.screenShareTrack.collectAsStateWithLifecycle()
+    val isCameraOn by viewModel.isCameraOn.collectAsStateWithLifecycle()
+    val streams by viewModel.liveStreams.collectAsStateWithLifecycle()
+    val publishError by viewModel.publishError.collectAsStateWithLifecycle()
 
     var denied by remember { mutableStateOf(false) }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) viewModel.join() else denied = true
+    }
+    val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) viewModel.toggleCamera()
+        else Toast.makeText(context, "Camera permission is needed to stream your camera.", Toast.LENGTH_SHORT).show()
     }
 
     LaunchedEffect(Unit) {
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        if (granted) viewModel.join() else permission.launch(Manifest.permission.RECORD_AUDIO)
+        if (granted) viewModel.join() else micPermission.launch(Manifest.permission.RECORD_AUDIO)
     }
     // The call persists when navigating away (Discord-style) so you stay connected
     // while browsing; it ends only via the explicit Leave button. join() is a no-op
     // if already connected to this channel.
 
+    LaunchedEffect(publishError) {
+        publishError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearPublishError()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            // Keep the control row clear of the system nav/gesture area, or
+            // bottom taps land in the gesture zone instead of the buttons.
+            .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -116,17 +146,34 @@ fun VoiceCallScreen(
             }
             else -> {
                 val room = viewModel.room
-                val track = screenTrack
-                if (room != null && track != null) {
-                    ScreenShareView(
-                        room = room,
-                        track = track,
+                // Live streams (cameras and screen shares alike), stacked above
+                // the roster; the grid keeps the remaining space.
+                if (room != null && streams.isNotEmpty()) {
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(16f / 9f)
-                            .padding(vertical = 8.dp)
-                            .clip(RoundedCornerShape(12.dp)),
-                    )
+                            .weight(if (streams.size > 1) 1.2f else 0.8f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(streams, key = { it.id }) { stream ->
+                            Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                                VideoStreamView(
+                                    room = room,
+                                    track = stream.track,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(16f / 9f)
+                                        .clip(RoundedCornerShape(12.dp)),
+                                )
+                                Text(
+                                    "${stream.title} · ${if (stream.isScreen) "screen" else "camera"}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 2.dp),
+                                )
+                            }
+                        }
+                    }
                 }
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
@@ -134,17 +181,35 @@ fun VoiceCallScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(participants.filterNot { it.isScreenSharer }, key = { it.id }) { p ->
+                    items(participants.filterNot { it.isScreenSharer && !it.hasCamera }, key = { it.id }) { p ->
                         ParticipantTile(p)
                     }
                 }
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 12.dp)) {
             Button(onClick = viewModel::toggleMute) {
                 Icon(if (isMuted) Icons.Default.MicOff else Icons.Default.Mic, contentDescription = "Mute")
                 Text(if (isMuted) "Unmute" else "Mute", modifier = Modifier.padding(start = 6.dp))
+            }
+            Button(onClick = {
+                if (isCameraOn) {
+                    viewModel.toggleCamera()
+                } else {
+                    val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                    if (granted) viewModel.toggleCamera() else cameraPermission.launch(Manifest.permission.CAMERA)
+                }
+            }) {
+                Icon(
+                    if (isCameraOn) Icons.Default.Videocam else Icons.Default.VideocamOff,
+                    contentDescription = if (isCameraOn) "Stop camera" else "Start camera",
+                )
+            }
+            if (isCameraOn) {
+                Button(onClick = viewModel::flipCamera) {
+                    Icon(Icons.Default.Cameraswitch, contentDescription = "Flip camera")
+                }
             }
             Button(
                 onClick = { viewModel.leave(); onBack() },
@@ -174,14 +239,24 @@ private fun ParticipantTile(p: CallParticipant) {
                 Text((p.name.firstOrNull()?.uppercase() ?: "?"), color = Color.White, fontWeight = FontWeight.Bold)
             }
             Text(if (p.isLocal) "You" else p.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
-            if (p.isMuted) Text("muted", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (p.isMuted) Text("muted", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (p.hasCamera) {
+                    Icon(
+                        Icons.Default.Videocam,
+                        contentDescription = "Camera on",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+            }
         }
     }
 }
 
-/** View-only screen-share renderer (LiveKit SurfaceViewRenderer in an AndroidView). */
+/** Renderer for any live video track — remote screen share or a camera (LiveKit SurfaceViewRenderer). */
 @Composable
-private fun ScreenShareView(room: Room, track: VideoTrack, modifier: Modifier = Modifier) {
+private fun VideoStreamView(room: Room, track: VideoTrack, modifier: Modifier = Modifier) {
     var renderer by remember { mutableStateOf<SurfaceViewRenderer?>(null) }
     AndroidView(
         modifier = modifier,

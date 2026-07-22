@@ -14,12 +14,19 @@ suspend fun <T> apiCall(block: suspend () -> T): T {
     try {
         return block()
     } catch (e: HttpException) {
-        if (e.code() == 401) throw ApiException.Unauthorized()
         val envelope = runCatching {
             e.response()?.errorBody()?.string()?.let {
                 EchonJson.decodeFromString(ServerErrorEnvelope.serializer(), it)
             }
         }.getOrNull()
+        if (e.code() == 401) {
+            // A login 401 means bad credentials, not an expired session — showing
+            // "session expired" on the sign-in screen is badly misleading.
+            if (envelope?.code == "invalid_credentials") {
+                throw ApiException.Http(401, "Incorrect email or password.", envelope.code)
+            }
+            throw ApiException.Unauthorized()
+        }
         throw ApiException.Http(e.code(), envelope?.text, envelope?.code)
     } catch (e: SerializationException) {
         throw ApiException.Decoding(e)

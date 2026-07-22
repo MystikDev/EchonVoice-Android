@@ -12,12 +12,13 @@
         </intent>
     </queries>
 
-    <!-- LiveKit merges in CAMERA, but Echon only does voice + view-only screen
-         share (never captures the device camera). A declared-but-ungranted CAMERA
-         permission makes Android reject ACTION_IMAGE_CAPTURE with a SecurityException
-         (photo capture goes through the system camera app, which holds its own
-         permission). Remove it: fixes the crash and shrinks the permission surface. -->
-    <uses-permission android:name="android.permission.CAMERA" tools:node="remove" />
+    <!-- Camera streaming in voice calls (LiveKit camera track). CAREFUL: because
+         CAMERA is declared, Android rejects ACTION_IMAGE_CAPTURE with a
+         SecurityException unless the runtime grant is held — so the chat photo
+         button must ensure the grant before launching the system camera
+         (see ChatScreen). Removing the declaration was the old fix; now that we
+         genuinely capture camera, both flows need the grant. -->
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <!-- LiveKit also merges the media-projection FGS permission + its
          ScreenCaptureService for PUBLISHING your own screen. Echon does view-only

@@ -13,6 +13,17 @@ data class VoiceParticipantState(
     val joinedAt: String? = null,
 )
 
+/**
+ * PATCH /v1/voice/state — push our mic/camera/screen state so occupancy and
+ * other clients' rosters reflect it (LiveKit only carries the media).
+ */
+@Serializable
+data class VoiceStateUpdateRequest(
+    val muted: Boolean,
+    val video: Boolean,
+    val screen: Boolean,
+)
+
 /** POST /v1/channels/{id}/voice/join → LiveKit credentials. */
 @Serializable
 data class VoiceJoinResponse(

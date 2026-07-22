@@ -104,6 +104,28 @@ fun ChatScreen(
         pendingCameraUri = null
     }
 
+    // The manifest declares CAMERA (for in-call camera streaming), and Android
+    // rejects ACTION_IMAGE_CAPTURE with a SecurityException when a declared
+    // CAMERA permission isn't granted — so the photo button must secure the
+    // grant first, then launch the system camera.
+    fun launchCamera() {
+        try {
+            val uri = viewModel.newCameraCaptureUri()
+            pendingCameraUri = uri
+            takePhoto.launch(uri)
+        } catch (e: Exception) {
+            pendingCameraUri = null
+            android.util.Log.w("EchonCamera", "camera launch failed", e)
+            Toast.makeText(context, "Couldn't open the camera on this device.", Toast.LENGTH_SHORT).show()
+        }
+    }
+    val cameraPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) launchCamera()
+        else Toast.makeText(context, "Camera permission is needed to take a photo.", Toast.LENGTH_SHORT).show()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -128,18 +150,10 @@ fun ChatScreen(
                     onSend = viewModel::send,
                     onAttach = { photoPicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     onCapture = {
-                        // Never let opening the camera hard-crash the app: some
-                        // devices have no camera app (ActivityNotFoundException) or
-                        // reject the intent — degrade to a toast instead.
-                        try {
-                            val uri = viewModel.newCameraCaptureUri()
-                            pendingCameraUri = uri
-                            takePhoto.launch(uri)
-                        } catch (e: Exception) {
-                            pendingCameraUri = null
-                            android.util.Log.w("EchonCamera", "camera launch failed", e)
-                            Toast.makeText(context, "Couldn't open the camera on this device.", Toast.LENGTH_SHORT).show()
-                        }
+                        val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+                            context, android.Manifest.permission.CAMERA,
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        if (granted) launchCamera() else cameraPermission.launch(android.Manifest.permission.CAMERA)
                     },
                     uploading = viewModel.uploading,
                     channelName = viewModel.channelName,
