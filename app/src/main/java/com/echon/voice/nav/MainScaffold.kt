@@ -21,7 +21,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.echon.voice.core.designsystem.EchonTopBar
 import com.echon.voice.core.realtime.RealtimeStore
 import com.echon.voice.feature.dms.DMListScreen
 import com.echon.voice.feature.friends.FriendsScreen
@@ -36,8 +38,10 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val servers: ServersStore,
-    private val realtime: RealtimeStore,
+    realtime: RealtimeStore,
 ) : ViewModel() {
+    val isConnected = realtime.isConnected
+
     init {
         viewModelScope.launch {
             runCatching { servers.loadServers() }
@@ -56,11 +60,13 @@ fun MainScaffold(
     onOpenBlockedUsers: () -> Unit,
     onOpenEditProfile: () -> Unit,
     onOpenChangePassword: () -> Unit,
-    @Suppress("UNUSED_PARAMETER") viewModel: MainViewModel = hiltViewModel(),
+    viewModel: MainViewModel = hiltViewModel(),
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    val isConnected by viewModel.isConnected.collectAsStateWithLifecycle()
 
     Scaffold(
+        topBar = { EchonTopBar(isConnected = isConnected) },
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(tab == 0, { tab = 0 }, icon = { Icon(Icons.AutoMirrored.Filled.Chat, "Servers") }, label = { Text("Servers") })
