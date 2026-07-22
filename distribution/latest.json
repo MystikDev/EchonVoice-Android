@@ -1,9 +1,9 @@
 {
-  "version_code": 22,
-  "version_name": "2.0.21",
+  "version_code": 23,
+  "version_name": "2.0.22",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "A fresh coat of paint: new Echon branding at the top of the app, with a live connection indicator that glows green while you're connected.",
-  "sha256": "bf5fc48b87d43fdcda257440c1056c6e9bd4b8411daef34f868d9b0f5efec8ae"
+  "sha256": "9fcdb12d4cc491616e017f3160ec3ede9883cfb9c97d4e124ddd69a36b486a29"
 }
