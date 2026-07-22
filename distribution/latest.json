@@ -4,6 +4,6 @@
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "See at a glance whether your friends are online: presence dots on avatars in the Friends and DM lists (green online, amber idle, gray offline).",
+  "notes": "Stream your phone's camera in voice channels! Tap the camera button in a call to go live (with front/back flip) - it shows up for everyone like a screen share. Also clearer sign-in errors.",
   "sha256": "7ea2ea7ffaf7738e75eddbf3f3399e8c1dfefd0c39eb7baf70afe88601defee5"
 }
