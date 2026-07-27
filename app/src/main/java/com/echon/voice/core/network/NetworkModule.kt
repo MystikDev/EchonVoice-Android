@@ -67,19 +67,27 @@ object NetworkModule {
             .build()
 
     /**
-     * Media client for Coil (avatars/attachments). Pinned so echon-voice.com media
-     * still fails closed, but carries NO session credentials, NO 401 authenticator,
-     * and does NOT capture refresh cookies — so an absolute image URL to a
-     * third-party host can never receive the bearer or poison the session.
+     * Media client for Coil (avatars/attachments). Message attachments are served
+     * from the authenticated /files/{id} endpoint, so this client DOES attach the
+     * bearer — but only on the Echon API host: [AuthInterceptor] and
+     * [TokenAuthenticator] are both hard-gated on [TlsPinning.isApiHost], so an
+     * absolute image URL to a third-party host still never receives credentials
+     * (the property the security review required). No [RefreshCookieInterceptor]:
+     * image responses can never rotate the session's refresh token.
      */
     @Provides
     @Singleton
     @Named("media")
-    fun provideMediaClient(): OkHttpClient =
+    fun provideMediaClient(
+        authInterceptor: AuthInterceptor,
+        authenticator: TokenAuthenticator,
+    ): OkHttpClient =
         OkHttpClient.Builder()
             .certificatePinner(TlsPinning.certificatePinner())
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(authInterceptor)
+            .authenticator(authenticator)
             .addInterceptor(logging())
             .build()
 

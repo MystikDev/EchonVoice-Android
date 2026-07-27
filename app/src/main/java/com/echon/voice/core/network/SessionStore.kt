@@ -31,12 +31,23 @@ class SessionStore @Inject constructor(
     val refreshToken: String? get() = refresh
     val hasSession: Boolean get() = access != null || refresh != null
 
+    /**
+     * Adopt a login/register session. A null [refresh] means "the response body
+     * carried no refresh token" — which is ALWAYS true (the backend delivers it
+     * only as an HttpOnly cookie, captured by [RefreshCookieInterceptor] moments
+     * before this runs) — so null must PRESERVE the captured token, not erase
+     * it. Nulling it here was the "constantly signed out" bug: the session
+     * silently lost its refresh token at login and died with the first expired
+     * access token. Ending the session goes through [clear], never this.
+     */
     @Synchronized
     fun setTokens(access: String?, refresh: String?) {
         this.access = access
-        this.refresh = refresh
         storage.accessToken = access
-        storage.refreshToken = refresh
+        if (refresh != null) {
+            this.refresh = refresh
+            storage.refreshToken = refresh
+        }
     }
 
     /**
