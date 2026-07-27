@@ -1,9 +1,9 @@
 {
-  "version_code": 23,
-  "version_name": "2.0.22",
+  "version_code": 24,
+  "version_name": "2.0.23",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Fixes two important bugs: you now stay signed in after closing the app (no more constant re-logins), and images in chat channels load reliably again.",
-  "sha256": "9fcdb12d4cc491616e017f3160ec3ede9883cfb9c97d4e124ddd69a36b486a29"
+  "sha256": "5cc305d6e48131a802e16869dd621f013ecf06c493807c619b6de785a355d2f1"
 }
