@@ -1,9 +1,9 @@
 {
-  "version_code": 25,
-  "version_name": "2.0.24",
+  "version_code": 26,
+  "version_name": "2.0.25",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Fixes server member online/offline status and population counts. Presence now loads when you connect, updates live, and recovers after reconnecting. Idle and Do Not Disturb display correctly. Improved connection heartbeat and background recovery.",
-  "sha256": "20f8e0063f58e6e5ff94f41295fad3273fbf782d79936f16efecc4bd9d2d2e6f"
+  "sha256": "23ba4caecf9ad123269aea1b8dc2f455215c95d9a672d84b30d9979e7ad5e213"
 }
