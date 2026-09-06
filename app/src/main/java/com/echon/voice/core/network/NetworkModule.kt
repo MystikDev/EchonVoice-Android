@@ -1,6 +1,5 @@
 package com.echon.voice.core.network
 
-import com.echon.voice.BuildConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,11 +27,8 @@ object NetworkModule {
             redactHeader("X-Refresh-Token")
             redactHeader("Cookie")
             redactHeader("Set-Cookie")
-            level = if (BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.HEADERS
-            } else {
-                HttpLoggingInterceptor.Level.NONE
-            }
+            // Even BASIC/HEADERS logs URL query strings (including WebSocket tickets).
+            level = HttpLoggingInterceptor.Level.NONE
         }
 
     /**
@@ -44,6 +40,9 @@ object NetworkModule {
     @Named("refresh")
     fun provideRefreshClient(refreshCookie: RefreshCookieInterceptor): OkHttpClient =
         OkHttpClient.Builder()
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .addNetworkInterceptor(CredentialBoundaryInterceptor())
             .certificatePinner(TlsPinning.certificatePinner())
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -62,6 +61,8 @@ object NetworkModule {
     @Named("plain")
     fun providePlainClient(): OkHttpClient =
         OkHttpClient.Builder()
+            .followSslRedirects(false)
+            .callTimeout(5, TimeUnit.MINUTES)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .build()
@@ -83,6 +84,8 @@ object NetworkModule {
         authenticator: TokenAuthenticator,
     ): OkHttpClient =
         OkHttpClient.Builder()
+            .followSslRedirects(false)
+            .addNetworkInterceptor(CredentialBoundaryInterceptor())
             .certificatePinner(TlsPinning.certificatePinner())
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -100,6 +103,9 @@ object NetworkModule {
         refreshCookie: RefreshCookieInterceptor,
     ): OkHttpClient =
         OkHttpClient.Builder()
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .addNetworkInterceptor(CredentialBoundaryInterceptor())
             .certificatePinner(TlsPinning.certificatePinner())
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)

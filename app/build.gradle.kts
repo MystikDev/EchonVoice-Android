@@ -13,7 +13,11 @@ plugins {
 // Firebase project. Apply the plugin only when that file is present, so the repo
 // still builds without it — push is simply inert until the file is dropped in.
 // See distribution/PUSH-NOTIFICATIONS-SETUP.md.
-if (project.file("google-services.json").exists()) {
+// Local test builds can opt out when the release-only Firebase file has no
+// client for the .debug application ID. Release behavior remains unchanged.
+if (project.file("google-services.json").exists() &&
+    !providers.gradleProperty("echon.disableFirebase").map(String::toBoolean).getOrElse(false)
+) {
     apply(plugin = "com.google.gms.google-services")
 }
 
@@ -25,8 +29,8 @@ android {
         applicationId = "com.echon.voice"
         minSdk = 24
         targetSdk = 35
-        versionCode = 24
-        versionName = "2.0.23"
+        versionCode = 25
+        versionName = "2.0.24"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -118,6 +122,7 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
@@ -162,6 +167,7 @@ dependencies {
     testImplementation(libs.mockwebserver)
     testImplementation(libs.kotlinx.coroutines.test)
 
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

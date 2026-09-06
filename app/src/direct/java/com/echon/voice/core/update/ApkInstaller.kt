@@ -8,12 +8,18 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.echon.voice.BuildConfig
+import androidx.core.content.pm.PackageInfoCompat
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Named
@@ -27,11 +33,10 @@ import javax.inject.Singleton
  * UPDATE_PACKAGES_WITHOUT_USER_ACTION permission. On older devices, or when the
  * system declines, [InstallResultReceiver] forwards the user to the installer UI.
  *
- * Two integrity controls apply: (1) Android's OS verifier rejects any APK not
- * signed with the installed app's key; (2) when the manifest carries a [sha256],
- * [download] verifies the bytes against it and refuses a mismatch — so even a
- * same-key but unexpected/rolled-back artifact from a compromised download
- * source is caught before install.
+ * Downloads require a SHA-256 digest, a fixed HTTPS source, and bounded size.
+ * Before install the package and manifest version must match this self-update.
+ * Android's installer verifies the existing package's signing key/rotation lineage.
+ * A hash fetched alongside an artifact is integrity metadata, not an independent signature.
  */
 @Singleton
 class ApkInstaller @Inject constructor(
@@ -45,6 +50,7 @@ class ApkInstaller @Inject constructor(
 
     /** Sends the user to grant "install unknown apps" for this app (one-time). */
     fun requestInstallPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val intent = Intent(
             Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
             Uri.parse("package:${context.packageName}"),
@@ -52,28 +58,29 @@ class ApkInstaller @Inject constructor(
         context.startActivity(intent)
     }
 
-    /**
-     * Streams the APK to cache over the plain client. When [expectedSha256] is
-     * non-null, the downloaded file's SHA-256 must match it (case-insensitive
-     * hex) or the file is deleted and an [IOException] is thrown before any
-     * install is attempted.
-     */
+    /** Downloads to a unique private cache file; a missing/mismatched hash fails closed. */
     suspend fun download(apkUrl: String, expectedSha256: String? = null): File = withContext(Dispatchers.IO) {
-        val response = client.newCall(Request.Builder().url(apkUrl).build()).execute()
-        response.use {
-            if (!it.isSuccessful) throw IOException("Download failed (${it.code}).")
-            val body = it.body ?: throw IOException("Empty download body.")
-            val file = File(context.cacheDir, "echon-update.apk")
-            body.byteStream().use { input -> file.outputStream().use { out -> input.copyTo(out) } }
-
-            if (expectedSha256 != null) {
-                val actual = file.sha256Hex()
-                if (!actual.equals(expectedSha256, ignoreCase = true)) {
-                    file.delete()
-                    throw IOException("APK integrity check failed: expected $expectedSha256, got $actual.")
-                }
+        requireValidUpdateHash(expectedSha256)
+        require(apkUrl == UpdateConfig.LATEST_APK_URL) { "Unexpected update source" }
+        val coroutineContext = currentCoroutineContext()
+        val file = File.createTempFile("echon-update-", ".apk", context.cacheDir)
+        try {
+            client.newCall(Request.Builder().url(apkUrl).build()).execute().use { response ->
+                if (!response.isSuccessful) throw IOException("Download failed (${response.code}).")
+                val body = response.body ?: throw IOException("Empty download body.")
+                if (body.contentLength() > MAX_APK_BYTES) throw IOException("Update is too large.")
+                body.byteStream().use { input -> file.outputStream().use { out ->
+                    copyUpdateCapped(input, out, MAX_APK_BYTES) { coroutineContext.ensureActive() }
+                } }
+            }
+            coroutineContext.ensureActive()
+            if (!file.sha256Hex().equals(expectedSha256, ignoreCase = true)) {
+                throw IOException("APK integrity check failed.")
             }
             file
+        } catch (e: Exception) {
+            file.delete()
+            throw e
         }
     }
 
@@ -81,26 +88,69 @@ class ApkInstaller @Inject constructor(
      * Installs the APK. On Android 12+ this is silent for a same-key self-update;
      * otherwise the system installer is surfaced via [InstallResultReceiver].
      */
-    fun install(apk: File) {
+    fun install(apk: File, expectedVersionCode: Int) {
+        try {
+            val info = context.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)
+                ?: throw IOException("Invalid APK.")
+            requireSelfUpdate(info.packageName, context.packageName,
+                PackageInfoCompat.getLongVersionCode(info), BuildConfig.VERSION_CODE, expectedVersionCode)
+            installVerified(apk)
+        } finally {
+            apk.delete()
+        }
+    }
+
+    private fun installVerified(apk: File) {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+        params.setAppPackageName(context.packageName)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
         }
         val sessionId = installer.createSession(params)
-        installer.openSession(sessionId).use { session ->
-            apk.inputStream().use { input ->
-                session.openWrite("echon", 0, apk.length()).use { out ->
-                    input.copyTo(out)
-                    session.fsync(out)
+        try {
+            installer.openSession(sessionId).use { session ->
+                apk.inputStream().use { input ->
+                    session.openWrite("echon", 0, apk.length()).use { out ->
+                        input.copyTo(out)
+                        session.fsync(out)
+                    }
                 }
+                val intent = Intent(context, InstallResultReceiver::class.java)
+                val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
+                val pending = PendingIntent.getBroadcast(context, sessionId, intent, flags)
+                session.commit(pending.intentSender)
             }
-            val intent = Intent(context, InstallResultReceiver::class.java)
-            val flags = PendingIntent.FLAG_UPDATE_CURRENT or
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
-            val pending = PendingIntent.getBroadcast(context, sessionId, intent, flags)
-            session.commit(pending.intentSender)
+        } catch (e: Exception) {
+            installer.abandonSession(sessionId)
+            throw e
         }
+    }
+}
+
+internal const val MAX_APK_BYTES = 256L * 1024 * 1024
+
+internal fun requireValidUpdateHash(hash: String?) {
+    require(hash != null && Regex("[0-9a-fA-F]{64}").matches(hash)) { "Update requires a SHA-256 digest." }
+}
+
+internal fun requireSelfUpdate(candidate: String, installed: String, version: Long, current: Int, expected: Int) {
+    require(candidate == installed) { "Update is for a different application." }
+    require(version > current && version == expected.toLong()) { "Unexpected update version." }
+    // Android verifies the installed package's signing key/rotation lineage at commit.
+}
+
+internal fun copyUpdateCapped(input: InputStream, output: OutputStream, limit: Long, checkActive: () -> Unit = {}) {
+    val buffer = ByteArray(8192)
+    var total = 0L
+    while (true) {
+        checkActive()
+        val count = input.read(buffer)
+        if (count < 0) break
+        total += count
+        if (total > limit) throw IOException("Update is too large.")
+        output.write(buffer, 0, count)
     }
 }
 

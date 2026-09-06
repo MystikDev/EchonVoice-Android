@@ -112,7 +112,7 @@ class UpdateViewModel @Inject constructor(
             // download; the manifest only decides *whether* to update and carries
             // the expected hash to verify the bytes.
             val apk = installer.download(UpdateConfig.LATEST_APK_URL, expectedSha256 = release.sha256)
-            installer.install(apk) // silent on API 31+; system installer otherwise
+            installer.install(apk, release.versionCode) // silent on API 31+; system installer otherwise
         } catch (e: Exception) {
             android.util.Log.w("EchonUpdate", "auto-update failed", e)
         } finally {

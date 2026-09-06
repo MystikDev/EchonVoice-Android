@@ -55,8 +55,8 @@ fun SignedInNavHost() {
     NavHost(navController = nav, startDestination = "main") {
         composable("main") {
             MainScaffold(
-                onOpenChannel = { id, name, kind -> nav.navigate("chat/$id?channelName=$name&channelKind=$kind") },
-                onOpenVoice = { id, name -> nav.navigate("voice/$id?channelName=$name") },
+                onOpenChannel = { id, name, kind -> nav.navigate("chat/${android.net.Uri.encode(id)}?channelName=${android.net.Uri.encode(name)}&channelKind=${android.net.Uri.encode(kind)}") },
+                onOpenVoice = { id, name -> nav.navigate("voice/${android.net.Uri.encode(id)}?channelName=${android.net.Uri.encode(name)}") },
                 onOpenMembers = { nav.navigate("members/$it") },
                 onOpenProfile = { profileUser = it },
                 onOpenBlockedUsers = { nav.navigate("blocked") },

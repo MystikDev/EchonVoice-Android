@@ -26,12 +26,14 @@ import javax.inject.Inject
 class EchonMessagingService : FirebaseMessagingService() {
 
     @Inject lateinit var registrar: PushTokenRegistrar
+    @Inject lateinit var session: com.echon.voice.core.network.SessionStore
 
     override fun onNewToken(token: String) {
         registrar.onTokenRefreshed(token)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
+        if (!session.hasSession) return
         val data = message.data
 
         // Inner payload is JSON-stringified (FCM data values must be strings).

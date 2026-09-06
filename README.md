@@ -28,8 +28,10 @@ points `sdk.dir` at the SDK.
 ```sh
 export JAVA_HOME=/opt/homebrew/opt/openjdk@17
 export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
-./gradlew :app:assembleDebug          # build
-./gradlew :app:testDebugUnitTest      # JVM tests (incl. cert-pinning checks)
+./gradlew :app:assembleDirectRelease :app:assemblePlayRelease
+./gradlew -Pechon.disableFirebase=true :app:testDirectDebugUnitTest :app:testPlayDebugUnitTest
+./gradlew -Pechon.disableFirebase=true :app:lintDirectDebug :app:lintPlayDebug
+./gradlew -Pechon.disableFirebase=true :app:connectedDirectDebugAndroidTest
 ```
 
 The live login check in `TlsPinningTest` runs only when `ECHON_TEST_EMAIL` /
@@ -40,3 +42,11 @@ The live login check in `TlsPinningTest` runs only when `ECHON_TEST_EMAIL` /
 - No payments/donate UI in the mobile client (store-policy parity with iOS).
 - Moderation (report/block/blocked-list/instant content removal/ToS gate/account
   deletion) is built early — see the moderation feature package.
+
+## September 2026 review
+
+[Security and streaming review](SECURITY_REVIEW.md) documents the 2.0.24 changes,
+validation evidence, Android 17 migration considerations, and the remaining live
+audio/device acceptance checks. Debug verification can use
+`-Pechon.disableFirebase=true` when the local Firebase configuration has only a
+release package client; normal release builds keep Firebase enabled.

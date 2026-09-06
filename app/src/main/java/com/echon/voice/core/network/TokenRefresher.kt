@@ -19,11 +19,12 @@ class TokenRefresher @Inject constructor(
     @Named("refresh") private val client: OkHttpClient,
 ) {
     /** @return the new tokens, or null if the refresh failed. */
-    fun refresh(refreshToken: String): RefreshResponse? {
+    fun refresh(refreshToken: String, generation: Long): RefreshResponse? {
         val request = Request.Builder()
             .url(ApiConfig.BASE_URL + "v1/auth/refresh")
             .post(ByteArray(0).toRequestBody())
             .header("X-Refresh-Token", refreshToken)
+            .tag(SessionGeneration::class.java, SessionGeneration(generation))
             .build()
         return runCatching {
             client.newCall(request).execute().use { response ->

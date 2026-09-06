@@ -2,10 +2,13 @@ package com.echon.voice.feature.voice
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +18,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,11 +40,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,16 +55,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.livekit.android.renderer.SurfaceViewRenderer
 import io.livekit.android.room.Room
-import io.livekit.android.room.track.VideoTrack
 import javax.inject.Inject
 
 @HiltViewModel
@@ -101,18 +102,28 @@ fun VoiceCallScreen(
     val publishError by viewModel.publishError.collectAsStateWithLifecycle()
 
     var denied by remember { mutableStateOf(false) }
-    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) viewModel.join() else denied = true
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+        // Bluetooth is optional; denial must not prevent speaker/wired playback.
+        if (grants[Manifest.permission.RECORD_AUDIO] == true ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        ) viewModel.join() else denied = true
     }
     val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) viewModel.toggleCamera()
         else Toast.makeText(context, "Camera permission is needed to stream your camera.", Toast.LENGTH_SHORT).show()
     }
 
-    LaunchedEffect(Unit) {
+    fun joinWithPermissions() {
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        if (granted) viewModel.join() else micPermission.launch(Manifest.permission.RECORD_AUDIO)
+        val bluetoothGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+        if (granted && bluetoothGranted) viewModel.join() else micPermission.launch(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+                arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.BLUETOOTH_CONNECT)
+            else arrayOf(Manifest.permission.RECORD_AUDIO),
+        )
     }
+    LaunchedEffect(Unit) { joinWithPermissions() }
     // The call persists when navigating away (Discord-style) so you stay connected
     // while browsing; it ends only via the explicit Leave button. join() is a no-op
     // if already connected to this channel.
@@ -124,16 +135,32 @@ fun VoiceCallScreen(
         }
     }
 
+    var expandedId by rememberSaveable { mutableStateOf<String?>(null) }
+    val expanded = streams.firstOrNull { it.id == expandedId }
+    val activeRoom = viewModel.room
+    if (expanded != null && activeRoom != null) {
+        FullscreenStream(activeRoom, expanded) { expandedId = null }
+    }
+    LaunchedEffect(streams) {
+        if (expandedId != null && expanded == null) expandedId = null
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             // Keep the control row clear of the system nav/gesture area, or
             // bottom taps land in the gesture zone instead of the buttons.
-            .windowInsetsPadding(WindowInsets.navigationBars)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text("🔊 ${viewModel.channelName}", style = MaterialTheme.typography.titleLarge)
+        if (state == VoiceCallStore.CallState.Reconnecting) {
+            Text("Reconnecting audio and video…", style = MaterialTheme.typography.bodySmall)
+        }
+        if (state == VoiceCallStore.CallState.Idle && !denied) {
+            TextButton(onClick = { joinWithPermissions() }) { Text("Retry connection") }
+        }
 
         when {
             denied -> {
@@ -157,7 +184,7 @@ fun VoiceCallScreen(
                     ) {
                         items(streams, key = { it.id }) { stream ->
                             Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                                VideoStreamView(
+                                if (stream.id != expandedId) VideoStreamView(
                                     room = room,
                                     track = stream.track,
                                     modifier = Modifier
@@ -165,6 +192,7 @@ fun VoiceCallScreen(
                                         .aspectRatio(16f / 9f)
                                         .clip(RoundedCornerShape(12.dp)),
                                 )
+                                TextButton(onClick = { expandedId = stream.id }) { Text("Watch full screen") }
                                 Text(
                                     "${stream.title} · ${if (stream.isScreen) "screen" else "camera"}",
                                     style = MaterialTheme.typography.labelSmall,
@@ -188,7 +216,7 @@ fun VoiceCallScreen(
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 12.dp).horizontalScroll(rememberScrollState())) {
             Button(onClick = viewModel::toggleMute) {
                 Icon(if (isMuted) Icons.Default.MicOff else Icons.Default.Mic, contentDescription = "Mute")
                 Text(if (isMuted) "Unmute" else "Mute", modifier = Modifier.padding(start = 6.dp))
@@ -251,25 +279,5 @@ private fun ParticipantTile(p: CallParticipant) {
                 }
             }
         }
-    }
-}
-
-/** Renderer for any live video track — remote screen share or a camera (LiveKit SurfaceViewRenderer). */
-@Composable
-private fun VideoStreamView(room: Room, track: VideoTrack, modifier: Modifier = Modifier) {
-    var renderer by remember { mutableStateOf<SurfaceViewRenderer?>(null) }
-    AndroidView(
-        modifier = modifier,
-        factory = { ctx ->
-            SurfaceViewRenderer(ctx).also {
-                room.initVideoRenderer(it)
-                renderer = it
-            }
-        },
-    )
-    DisposableEffect(track, renderer) {
-        val r = renderer
-        if (r != null) track.addRenderer(r)
-        onDispose { if (r != null) track.removeRenderer(r) }
     }
 }

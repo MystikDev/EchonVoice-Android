@@ -1,6 +1,9 @@
 package com.echon.voice.feature.voice
 
 import android.content.Context
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import com.echon.voice.core.di.ApplicationScope
 import com.echon.voice.core.network.EchonApi
 import com.echon.voice.core.network.apiCall
@@ -15,6 +18,17 @@ import io.livekit.android.room.track.LocalVideoTrack
 import io.livekit.android.room.track.LocalVideoTrackOptions
 import io.livekit.android.room.track.Track
 import io.livekit.android.room.track.VideoTrack
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
+import io.livekit.android.events.RoomEvent
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import com.echon.voice.core.network.TlsPinning
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,7 +72,7 @@ class VoiceCallStore @Inject constructor(
     private val api: EchonApi,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
-    enum class CallState { Idle, Connecting, Connected }
+    enum class CallState { Idle, Connecting, Connected, Reconnecting }
 
     private val _state = MutableStateFlow(CallState.Idle)
     val state: StateFlow<CallState> = _state.asStateFlow()
@@ -86,43 +100,111 @@ class VoiceCallStore @Inject constructor(
     var room: Room? = null
         private set
     private var eventsJob: Job? = null
+    private var stateReportJob: Job? = null
+    private var callJob: Job? = null
+    private var callScope: CoroutineScope? = null
+    private val controls = Mutex()
+    var sessionGeneration: Long = 0
+        private set
+    private var cameraForeground = false
+
+    fun setCameraForeground(visible: Boolean) {
+        cameraForeground = visible
+        if (!visible) stopCameraForBackground()
+    }
+
+    fun stopIfSession(generation: Long) {
+        if (generation == sessionGeneration) cleanup()
+    }
     private var activeChannelId: String? = null
     private var cameraPosition = CameraPosition.FRONT
 
+    // All state transitions run on Main; network/media suspension never owns cleanup
+    // for a later call. Cancelling a join must not resurrect capture after Leave.
     fun join(channelId: String, channelName: String) {
         if (_state.value != CallState.Idle) return
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            _publishError.value = "Microphone permission is required to join voice."
+            return
+        }
+        sessionGeneration++
         _state.value = CallState.Connecting
+        _publishError.value = null
         _channelName.value = channelName
         activeChannelId = channelId
-        scope.launch {
+        val job = SupervisorJob(scope.coroutineContext[Job])
+        callJob = job
+        val sessionScope = CoroutineScope(scope.coroutineContext + job + Dispatchers.Main.immediate)
+        callScope = sessionScope
+        sessionScope.launch {
             try {
+                // Establish the microphone FGS while the user is still foreground,
+                // before network latency can move audio startup into the background.
+                CallForegroundService.start(context, sessionGeneration)
                 val grant = apiCall { api.joinVoice(channelId) }
+                currentCoroutineContext().ensureActive()
+                val signaling = grant.livekitUrl.replaceFirst("wss://", "https://").toHttpUrlOrNull()
+                require(grant.livekitUrl.startsWith("wss://") && signaling != null &&
+                    TlsPinning.isApiOrigin(signaling)) { "Untrusted voice endpoint" }
                 val room = LiveKit.create(context.applicationContext)
-                // Front camera by default, mirroring iOS (CameraCaptureOptions position: .front).
                 room.videoTrackCaptureDefaults = LocalVideoTrackOptions(position = CameraPosition.FRONT)
+                room.adaptiveStream = true
                 this@VoiceCallStore.room = room
-                eventsJob = scope.launch { room.events.collect { sync(room) } }
+                eventsJob = sessionScope.launch {
+                    room.events.collect { event ->
+                        if (this@VoiceCallStore.room !== room) return@collect
+                        when (event) {
+                            is RoomEvent.Reconnecting -> _state.value = CallState.Reconnecting
+                            is RoomEvent.Reconnected -> _state.value = CallState.Connected
+                            is RoomEvent.Disconnected -> {
+                                cleanup()
+                                _publishError.value = "The call disconnected. Please reconnect."
+                                return@collect
+                            }
+                            is RoomEvent.TrackSubscriptionFailed ->
+                                _publishError.value = "A stream couldn't be received. Check your connection."
+                            else -> Unit
+                        }
+                        sync(room)
+                    }
+                }
                 room.connect(grant.livekitUrl, grant.token)
-                room.localParticipant.setMicrophoneEnabled(true)
+                currentCoroutineContext().ensureActive()
+                check(room.localParticipant.setMicrophoneEnabled(true)) { "Microphone publication failed" }
+                currentCoroutineContext().ensureActive()
                 _isMuted.value = false
-                CallForegroundService.start(context)
                 _state.value = CallState.Connected
                 sync(room)
                 reportVoiceState()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                cleanup()
+                if (callJob === job) {
+                    cleanup()
+                    _publishError.value = "Couldn't connect to voice. Check permissions and your connection."
+                }
             }
         }
     }
 
     fun toggleMute() {
+        if (_state.value != CallState.Connected && _state.value != CallState.Reconnecting) return
         val room = room ?: return
-        scope.launch {
-            val newMuted = !_isMuted.value
-            room.localParticipant.setMicrophoneEnabled(!newMuted)
-            _isMuted.value = newMuted
-            sync(room)
-            reportVoiceState()
+        callScope?.launch {
+            controls.withLock {
+                try {
+                    val newMuted = !_isMuted.value
+                    check(room.localParticipant.setMicrophoneEnabled(!newMuted)) { "Microphone update failed" }
+                    currentCoroutineContext().ensureActive()
+                    _isMuted.value = newMuted
+                    sync(room)
+                    reportVoiceState()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _publishError.value = "Couldn't change microphone state."
+                }
+            }
         }
     }
 
@@ -130,25 +212,38 @@ class VoiceCallStore @Inject constructor(
     fun toggleCamera() {
         val room = room ?: return
         if (_state.value != CallState.Connected) return
-        scope.launch {
-            val enable = !_isCameraOn.value
-            try {
-                val local = room.localParticipant
-                if (enable) {
-                    local.setCameraEnabled(true)
-                    _isCameraOn.value = local.getTrackPublication(Track.Source.CAMERA)?.track != null
-                } else {
-                    // setCameraEnabled(false) only MUTES — the publication lingers
-                    // and other clients keep a frozen tile (same gotcha as iOS).
-                    // Fully unpublish so the stream vanishes everywhere.
-                    local.getTrackPublication(Track.Source.CAMERA)?.track
-                        ?.let { local.unpublishTrack(it) }
-                    _isCameraOn.value = false
+        callScope?.launch {
+            controls.withLock {
+                val enable = !_isCameraOn.value
+                try {
+                    val local = room.localParticipant
+                    if (enable) {
+                        if (!cameraForeground) return@withLock
+                        check(local.setCameraEnabled(true)) { "Camera publication failed" }
+                        currentCoroutineContext().ensureActive()
+                        val track = local.getTrackPublication(Track.Source.CAMERA)?.track
+                        if (!cameraForeground) {
+                            (track as? LocalVideoTrack)?.stopCapture()
+                            track?.let { local.unpublishTrack(it) }
+                        }
+                        _isCameraOn.value = cameraForeground && track != null
+                    } else {
+                        // Unpublish completely so remote clients remove the tile.
+                        local.getTrackPublication(Track.Source.CAMERA)?.track?.let {
+                            (it as? LocalVideoTrack)?.stopCapture()
+                            local.unpublishTrack(it)
+                            // LiveKit caches its default track for the next enable;
+                            // Room.release() owns disposal at call teardown.
+                        }
+                        _isCameraOn.value = false
+                    }
+                    sync(room)
+                    reportVoiceState()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _publishError.value = "Couldn't ${if (enable) "start" else "stop"} the camera."
                 }
-                sync(room)
-                reportVoiceState()
-            } catch (e: Exception) {
-                _publishError.value = "Couldn't ${if (enable) "start" else "stop"} the camera."
             }
         }
     }
@@ -157,7 +252,7 @@ class VoiceCallStore @Inject constructor(
     fun flipCamera() {
         val local = room?.localParticipant ?: return
         val track = local.getTrackPublication(Track.Source.CAMERA)?.track as? LocalVideoTrack ?: return
-        scope.launch {
+        callScope?.launch {
             try {
                 // Pass the target explicitly — a bare switchCamera() (both args
                 // null) is a no-op in the SDK.
@@ -171,39 +266,65 @@ class VoiceCallStore @Inject constructor(
     }
 
     fun leave() {
+        val channelId = activeChannelId
+        // Stop capture NOW, even if the server is unreachable.
+        cleanup()
         scope.launch {
-            activeChannelId?.let { id -> runCatching { apiCall { api.leaveVoice(id) } } }
-            cleanup()
+            withTimeoutOrNull(5_000) {
+                channelId?.let { id -> runCatching { apiCall { api.leaveVoice(id) } } }
+            }
         }
+    }
+
+    /** Sign-out must not leave a LiveKit session recording independently of REST auth. */
+    fun stopForSignOut() = cleanup()
+
+    /** Camera has no background FGS: stop it as the activity leaves the foreground. */
+    fun stopCameraForBackground() {
+        val track = room?.localParticipant?.getTrackPublication(Track.Source.CAMERA)?.track as? LocalVideoTrack
+        track?.stopCapture()
+        if (_isCameraOn.value) toggleCamera()
     }
 
     /**
      * Best-effort report of mic/camera/screen state so server occupancy and
      * every other client's roster reflect it (LiveKit only carries the media).
      */
-    private suspend fun reportVoiceState() {
-        runCatching {
-            apiCall {
-                api.updateVoiceState(
-                    VoiceStateUpdateRequest(
-                        muted = _isMuted.value,
-                        video = _isCameraOn.value,
-                        screen = false, // phones never publish a screen
-                    ),
-                )
+    private fun reportVoiceState() {
+        // A slow occupancy request must never hold the mic/camera control mutex.
+        stateReportJob?.cancel()
+        stateReportJob = callScope?.launch {
+            runCatching {
+                apiCall {
+                    api.updateVoiceState(
+                        VoiceStateUpdateRequest(
+                            muted = _isMuted.value,
+                            video = _isCameraOn.value,
+                            screen = false,
+                        ),
+                    )
+                }
             }
         }
     }
 
     private fun cleanup() {
+        sessionGeneration++
+        callJob?.cancel()
+        callJob = null
+        callScope = null
+        stateReportJob = null
         eventsJob?.cancel()
         eventsJob = null
-        room?.disconnect()
+        val oldRoom = room
         room = null
+        oldRoom?.disconnect()
+        oldRoom?.release()
         activeChannelId = null
         _participants.value = emptyList()
         _liveStreams.value = emptyList()
         _isCameraOn.value = false
+        _isMuted.value = false
         cameraPosition = CameraPosition.FRONT
         _publishError.value = null
         _channelName.value = null

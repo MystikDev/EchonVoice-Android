@@ -65,6 +65,7 @@ object MessageNotifier {
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .setContentIntent(pending)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()

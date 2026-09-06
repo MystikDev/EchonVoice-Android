@@ -4,6 +4,6 @@
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Fixes two important bugs: you now stay signed in after closing the app (no more constant re-logins), and images in chat channels load reliably again.",
+  "notes": "Security improvements for sign-in, sign-out, private data, and app updates. Full-screen streams now support portrait/landscape viewing, fit/fill, pinch zoom, and zoom controls. Improved call lifecycle and audio reliability; live screen-share audio testing remains ongoing.",
   "sha256": "5cc305d6e48131a802e16869dd621f013ecf06c493807c619b6de785a355d2f1"
 }

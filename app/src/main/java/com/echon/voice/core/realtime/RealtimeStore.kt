@@ -12,6 +12,7 @@ import com.echon.voice.model.ChannelKind
 import com.echon.voice.model.ChatChannelKind
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,16 +57,8 @@ class RealtimeStore @Inject constructor(
     @Volatile var openChannelId: String? = null
 
     private var consumeJob: Job? = null
+    private var reconcileJob: Job? = null
     private val myId: String? get() = auth.currentUser.value?.id
-
-    init {
-        // Tear the socket down on sign-out so it doesn't reconnect with a dead session.
-        scope.launch {
-            auth.phase.collect { phase ->
-                if (phase == AuthStore.Phase.SignedOut) stop()
-            }
-        }
-    }
 
     private var lastTypingSentAt = 0L
     private var typingStopJob: Job? = null
@@ -78,10 +71,19 @@ class RealtimeStore @Inject constructor(
     }
 
     suspend fun stop() {
-        consumeJob?.cancel()
+        consumeJob?.cancelAndJoin()
         consumeJob = null
+        reconcileJob?.cancelAndJoin()
+        reconcileJob = null
         ws.stop()
         _isConnected.value = false
+        typingStopJob?.cancel()
+        typingStopJob = null
+        typingExpiry.values.forEach { it.cancel() }
+        typingExpiry.clear()
+        lastTypingSentAt = 0L
+        openChannelId = null
+        _presence.value = emptyMap()
         _typingUsers.value = emptyMap()
         _unreadChannelIds.value = emptySet()
     }
@@ -132,7 +134,8 @@ class RealtimeStore @Inject constructor(
         when (event) {
             is WsEvent.SocketConnected -> {
                 _isConnected.value = true
-                scope.launch {
+                reconcileJob?.cancel()
+                reconcileJob = scope.launch {
                     joinAllTextChannels()
                     openChannelId?.let { chat.store(it).reconcileLatest() }
                 }

@@ -16,6 +16,12 @@ import javax.inject.Singleton
 class ServersStore @Inject constructor(
     private val api: EchonApi,
 ) {
+    @Volatile private var generation = 0L
+    fun clear() {
+        generation++
+        _servers.value = emptyList(); _channelsByServer.value = emptyMap(); _selectedServerId.value = null
+    }
+
     private val _servers = MutableStateFlow<List<Server>>(emptyList())
     val servers: StateFlow<List<Server>> = _servers.asStateFlow()
 
@@ -26,15 +32,18 @@ class ServersStore @Inject constructor(
     val selectedServerId: StateFlow<String?> = _selectedServerId.asStateFlow()
 
     suspend fun loadServers() {
+        val epoch = generation
         val response = apiCall { api.myServers() }
+        if (epoch != generation) return
         _servers.value = response.servers
         if (_selectedServerId.value == null) _selectedServerId.value = response.servers.firstOrNull()?.id
         _selectedServerId.value?.let { loadChannels(it) }
     }
 
     suspend fun loadChannels(serverId: String) {
+        val epoch = generation
         val response = apiCall { api.serverChannels(serverId) }
-        _channelsByServer.update { it + (serverId to response.channels) }
+        if (epoch == generation) _channelsByServer.update { it + (serverId to response.channels) }
     }
 
     suspend fun select(serverId: String) {

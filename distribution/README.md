@@ -45,8 +45,9 @@ echon-voice.com pinned client. **Two** controls protect the update:
 2. **Manifest SHA-256** — `latest.json` carries the `sha256` of the release APK.
    The updater always downloads from the fixed compile-time URL (never a
    manifest-supplied one) and verifies the bytes against `sha256` before install,
-   so even a same-key but tampered/rolled-back artifact is caught. If `sha256` is
-   absent (older manifest), the app falls back to the OS check alone.
+   and rejects package/version mismatches and downgrades. Starting with 2.0.24,
+   missing or malformed hashes prevent installation. The signing identity remains
+   the independent trust boundary if the manifest source is compromised.
 
 The app/API traffic stays cert-pinned separately.
 
@@ -64,7 +65,7 @@ points at the GitHub `releases/latest/download/echon-release.apk` URL.
   "min_supported_version_code": 1,  // installs older than this are forced to update
   "mandatory": false,               // if true, the update is treated as required
   "notes": "What's new...",
-  "sha256": "<lowercase hex SHA-256 of echon-release.apk>"  // optional but recommended
+  "sha256": "<lowercase hex SHA-256 of echon-release.apk>"  // required by app versions 2.0.24 and later
 }
 ```
 Keys are **snake_case** (matching the app's JSON decoder). The release asset must be

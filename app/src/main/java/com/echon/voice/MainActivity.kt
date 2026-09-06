@@ -2,6 +2,8 @@ package com.echon.voice
 
 import android.Manifest
 import android.content.Intent
+import android.media.AudioManager
+import com.echon.voice.feature.voice.VoiceCallStore
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -35,6 +37,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var deepLinkStore: DeepLinkStore
     @Inject lateinit var appPreferences: AppPreferences
+    @Inject lateinit var voiceCalls: VoiceCallStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,6 +50,7 @@ class MainActivity : ComponentActivity() {
         )
         maybeRequestNotificationPermission()
         handleNotificationIntent(intent)
+        volumeControlStream = AudioManager.STREAM_VOICE_CALL
         enableEdgeToEdge()
         setContent {
             val retro by appPreferences.skinEnabled.collectAsStateWithLifecycle()
@@ -56,6 +60,18 @@ class MainActivity : ComponentActivity() {
                 AppRoot()
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        voiceCalls.setCameraForeground(true)
+    }
+
+    override fun onStop() {
+        // Rotation keeps capture; true backgrounding stops camera, while call audio
+        // remains owned by the microphone foreground service.
+        if (!isChangingConfigurations) voiceCalls.setCameraForeground(false)
+        super.onStop()
     }
 
     override fun onNewIntent(intent: Intent) {

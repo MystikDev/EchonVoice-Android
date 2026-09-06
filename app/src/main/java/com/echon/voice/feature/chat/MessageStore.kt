@@ -238,6 +238,8 @@ class ChatStores @Inject constructor(
 ) {
     private val byChannel = ConcurrentHashMap<String, MessageStore>()
 
+    fun clear() { byChannel.clear() }
+
     fun store(channelId: String, kind: ChatChannelKind = ChatChannelKind.SERVER): MessageStore =
         byChannel.getOrPut(channelId) { MessageStore(api, channelId, kind) }
 

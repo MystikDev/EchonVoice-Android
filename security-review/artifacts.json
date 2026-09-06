@@ -1,0 +1,32 @@
+{
+  "version": "2.0.24",
+  "versionCode": 25,
+  "artifacts": [
+    {
+      "flavor": "direct",
+      "file": "distribution/review/echon-2.0.24-direct.apk",
+      "bytes": 50954743,
+      "sha256": "4aedbd8b4fd4557c3ae45edc9bb99b683932c80366a8fc9a80ba22b6cc2009c2",
+      "signature_verified": true,
+      "zip_16kb_alignment_verified": true,
+      "firebase_enabled": true
+    },
+    {
+      "flavor": "play",
+      "file": "distribution/review/echon-2.0.24-play.apk",
+      "bytes": 50837276,
+      "sha256": "9f0b25df5acaf02756b11a444d5bd50e72cfeff4067dbf1c8bda0e467158334c",
+      "signature_verified": true,
+      "zip_16kb_alignment_verified": true,
+      "firebase_enabled": true
+    }
+  ],
+  "direct_release_smoke_test": {
+    "device": "echon_test Android 15 API 35 arm64 emulator",
+    "install": "passed",
+    "cold_start": "passed",
+    "cold_start_ms": 224,
+    "android_runtime_crash_log": "no entries returned",
+    "remote_audio_tested": false
+  }
+}

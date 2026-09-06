@@ -1,6 +1,7 @@
 package com.echon.voice.core.update
 
 import com.echon.voice.core.network.EchonJson
+import com.echon.voice.core.util.readBytesCapped
 import com.echon.voice.model.AppRelease
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,7 +35,8 @@ class GithubReleaseManifestSource @Inject constructor(
         runCatching {
             client.newCall(Request.Builder().url(UpdateConfig.MANIFEST_URL).build()).execute().use { response ->
                 if (!response.isSuccessful) return@use null
-                response.body?.string()?.let { EchonJson.decodeFromString(AppRelease.serializer(), it) }
+                response.body?.byteStream()?.use { it.readBytesCapped(64 * 1024) }
+                    ?.toString(Charsets.UTF_8)?.let { EchonJson.decodeFromString(AppRelease.serializer(), it) }
             }
         }.onFailure { android.util.Log.w("EchonUpdate", "manifest fetch failed", it) }.getOrNull()
     }

@@ -1,6 +1,7 @@
 package com.echon.voice.core.network
 
 import okhttp3.CertificatePinner
+import okhttp3.HttpUrl
 
 /**
  * Certificate pinning for echon-voice.com.
@@ -25,20 +26,20 @@ import okhttp3.CertificatePinner
  * Note: LiveKit (voice) builds its own internal OkHttp stack and does NOT use
  * this pinner. Its connection to `wss://echon-voice.com/lk` is instead pinned by
  * the platform network_security_config.xml (same ISRG roots, includeSubdomains),
- * which Android enforces on every socket regardless of client. If LiveKit ever
+ * which applies to clients using Android’s default TLS trust manager. If LiveKit ever
  * moves off echon-voice.com, that platform pin would no longer cover it — pass
  * this pinned client into LiveKit.create() at that point.
  */
 object TlsPinning {
     const val HOST = "echon-voice.com"
 
-    /**
-     * Whether [host] is the Echon API origin (the host itself or a subdomain).
-     * The single gate for attaching credentials / accepting auth cookies — used by
-     * the auth interceptor, the 401 authenticator, and the refresh-cookie capture
-     * so none of them ever trust a third-party host (e.g. an image URL).
-     */
-    fun isApiHost(host: String): Boolean = host == HOST || host.endsWith(".$HOST")
+    /** Exact API host. Certificate trust for subdomains does not authorize credentials there. */
+    fun isApiHost(host: String): Boolean = host == HOST
+
+    /** Credentials belong to the configured HTTPS origin, not sibling subdomains. */
+    fun isApiOrigin(url: HttpUrl): Boolean =
+        url.isHttps && isApiHost(url.host) && url.port == 443 &&
+            url.username.isEmpty() && url.password.isEmpty()
 
     /** ISRG Root X1 SPKI SHA-256. */
     const val ISRG_ROOT_X1 = "sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M="

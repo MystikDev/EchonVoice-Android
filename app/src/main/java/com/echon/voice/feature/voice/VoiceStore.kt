@@ -36,6 +36,7 @@ class VoiceStore @Inject constructor(
         scope.launch {
             servers.selectedServerId.collectLatest { id ->
                 if (id == null) {
+                    loadedServerId = null
                     _occupancy.value = emptyMap()
                 } else {
                     load(id)

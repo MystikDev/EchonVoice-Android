@@ -1,5 +1,15 @@
 # Echon Android — Build Plan
 
+## September 2026 security and streaming review
+- [x] Confirm scope: native Kotlin app, not the legacy WebView wrapper.
+- [x] Inspect authentication, updates, exported components, storage, and LiveKit lifecycle.
+- [x] Harden credential origins/redirects, session shutdown, WebSocket cancellation, and updater validation.
+- [x] Add adaptive full-screen stream viewing with fit/fill, bounded pinch zoom/pan, and renderer disposal.
+- [x] Fix call/service startup and shutdown races; preserve calls through rotation and reconnects.
+- [x] Run both flavor unit suites, lint, debug/release builds, and available device checks.
+- [x] Record findings, current Android guidance, and remaining live-device verification in SECURITY_REVIEW.md.
+- [ ] Release acceptance: run the two-device screen-share audio and API 36/37 checklist in SECURITY_REVIEW.md (requires live test setup).
+
 Native Kotlin/Compose client mirroring the iOS app (`echon-ios/native/EchonVoice`),
 same backend. Full plan: `~/.claude/plans/hashed-soaring-lollipop.md`.
 
@@ -76,4 +86,3 @@ LiveKit voice + view-only screen share, and settings (profile/password). Distrib
 via GitHub Releases — signed APK pulled transparently from the website link and updated
 in-app. Cert-pinned API; no payments UI; Play-compliant moderation + mic FGS if Play is
 pursued later.
-

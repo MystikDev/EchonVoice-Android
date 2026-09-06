@@ -19,13 +19,13 @@ class AuthInterceptor @Inject constructor(
         if (request.header(NO_AUTH_HEADER) != null) {
             return chain.proceed(request.newBuilder().removeHeader(NO_AUTH_HEADER).build())
         }
-        val token = session.accessToken
-        // Never leak the bearer to third-party hosts (e.g. a non-echon image URL).
-        val authed = if (token != null && TlsPinning.isApiHost(request.url.host)) {
-            request.newBuilder().header("Authorization", "Bearer $token").build()
-        } else {
-            request
-        }
+        val credentials = session.credentials()
+        val authed = if (TlsPinning.isApiOrigin(request.url)) {
+            request.newBuilder().apply {
+                credentials.access?.let { header("Authorization", "Bearer $it") }
+                tag(SessionGeneration::class.java, SessionGeneration(credentials.generation))
+            }.build()
+        } else request
         return chain.proceed(authed)
     }
 
@@ -34,3 +34,5 @@ class AuthInterceptor @Inject constructor(
         const val NO_AUTH_HEADER = "X-Echon-No-Auth"
     }
 }
+
+internal data class SessionGeneration(val value: Long)

@@ -84,7 +84,7 @@ class ExternalHostCredentialLeakTest {
     @Test
     fun `host guard matches only the Echon API origin`() {
         assertTrue(TlsPinning.isApiHost("echon-voice.com"))
-        assertTrue(TlsPinning.isApiHost("api.echon-voice.com"))
+        assertFalse(TlsPinning.isApiHost("api.echon-voice.com"))
         assertFalse(TlsPinning.isApiHost("attacker.example"))
         assertFalse(TlsPinning.isApiHost("echon-voice.com.attacker.example"))
         assertFalse(TlsPinning.isApiHost("notechon-voice.com"))

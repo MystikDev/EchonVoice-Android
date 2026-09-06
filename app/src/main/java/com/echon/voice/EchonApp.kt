@@ -14,9 +14,9 @@ import javax.inject.Named
  * Application entry point. Hilt's object graph roots here; the singleton-scoped
  * stores are the Android analog of the iOS `AppState` composition root.
  *
- * Supplies Coil's [ImageLoader] backed by the pinned but UNAUTHENTICATED media
- * client, so image loads honor certificate pinning without ever carrying the
- * session bearer or capturing auth cookies to a third-party image host.
+ * Supplies Coil's [ImageLoader] backed by the pinned, origin-restricted media
+ * client, so image loads honor certificate pinning while restricting the
+ * session bearer to the exact API origin. Third-party image hosts receive no credentials.
  */
 @HiltAndroidApp
 class EchonApp : Application(), ImageLoaderFactory {
@@ -36,6 +36,8 @@ class EchonApp : Application(), ImageLoaderFactory {
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
             .okHttpClient(mediaClient)
+            // Authenticated attachment bytes must not persist in a shared disk cache.
+            .diskCachePolicy(coil.request.CachePolicy.DISABLED)
             .crossfade(true)
             .build()
 }

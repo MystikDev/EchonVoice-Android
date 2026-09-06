@@ -16,17 +16,26 @@ import javax.inject.Singleton
 class DMsStore @Inject constructor(
     private val api: EchonApi,
 ) {
+    @Volatile private var generation = 0L
+    fun clear() {
+        generation++
+        _conversations.value = emptyList()
+    }
+
     private val _conversations = MutableStateFlow<List<DMConversation>>(emptyList())
     val conversations: StateFlow<List<DMConversation>> = _conversations.asStateFlow()
 
     suspend fun load() {
-        _conversations.value = apiCall { api.myDms() }.sortedByDescending { it.lastMessageAt ?: it.createdAt }
+        val epoch = generation
+        val result = apiCall { api.myDms() }.sortedByDescending { it.lastMessageAt ?: it.createdAt }
+        if (epoch == generation) _conversations.value = result
     }
 
     /** Opens (or returns the existing) DM with a recipient. */
     suspend fun open(recipientId: String): DMConversation {
+        val epoch = generation
         val conversation = apiCall { api.openDm(OpenDmRequest(recipientId)) }
-        if (_conversations.value.none { it.id == conversation.id }) {
+        if (epoch == generation && _conversations.value.none { it.id == conversation.id }) {
             _conversations.update { listOf(conversation) + it }
         }
         return conversation

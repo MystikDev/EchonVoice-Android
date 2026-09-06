@@ -44,9 +44,11 @@ import retrofit2.http.Url
  */
 interface EchonApi {
 
+    @Headers("X-Echon-No-Auth: true")
     @POST("v1/auth/login")
     suspend fun login(@Body body: LoginRequest): LoginResponse
 
+    @Headers("X-Echon-No-Auth: true")
     @POST("v1/auth/register")
     suspend fun register(@Body body: RegisterRequest): LoginResponse
 

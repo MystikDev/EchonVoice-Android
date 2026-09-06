@@ -16,6 +16,12 @@ import javax.inject.Singleton
 class FriendsStore @Inject constructor(
     private val api: EchonApi,
 ) {
+    @Volatile private var generation = 0L
+    fun clear() {
+        generation++
+        _friends.value = emptyList(); _incoming.value = emptyList(); _outgoing.value = emptyList()
+    }
+
     private val _friends = MutableStateFlow<List<User>>(emptyList())
     val friends: StateFlow<List<User>> = _friends.asStateFlow()
 
@@ -26,8 +32,11 @@ class FriendsStore @Inject constructor(
     val outgoing: StateFlow<List<FriendRequest>> = _outgoing.asStateFlow()
 
     suspend fun load() {
-        _friends.value = apiCall { api.myFriends() }
+        val epoch = generation
+        val friends = apiCall { api.myFriends() }
         val requests = apiCall { api.friendRequests() }
+        if (epoch != generation) return
+        _friends.value = friends
         _incoming.value = requests.incoming
         _outgoing.value = requests.outgoing
     }

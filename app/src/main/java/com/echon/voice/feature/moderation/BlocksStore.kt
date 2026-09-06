@@ -23,6 +23,12 @@ import javax.inject.Singleton
 class BlocksStore @Inject constructor(
     private val api: EchonApi,
 ) {
+    @Volatile private var generation = 0L
+    fun clear() {
+        generation++
+        _blockedIds.value = emptySet(); _blockedUsers.value = emptyList()
+    }
+
     private val _blockedIds = MutableStateFlow<Set<String>>(emptySet())
     val blockedIds: StateFlow<Set<String>> = _blockedIds.asStateFlow()
 
@@ -33,13 +39,16 @@ class BlocksStore @Inject constructor(
         userId != null && _blockedIds.value.contains(userId)
 
     suspend fun load() {
+        val epoch = generation
         val users = apiCall { api.myBlocks() }
+        if (epoch != generation) return
         _blockedUsers.value = users
         _blockedIds.value = users.map { it.id }.toSet()
     }
 
     /** Optimistic: the user's content vanishes the moment block is confirmed in-app. */
     suspend fun block(user: User) {
+        val epoch = generation
         _blockedIds.update { it + user.id }
         if (_blockedUsers.value.none { it.id == user.id }) {
             _blockedUsers.update { it + user }
@@ -47,6 +56,7 @@ class BlocksStore @Inject constructor(
         try {
             apiCall { api.block(user.id) }
         } catch (e: Exception) {
+            if (epoch != generation) throw e
             _blockedIds.update { it - user.id }
             _blockedUsers.update { list -> list.filterNot { it.id == user.id } }
             throw e
@@ -54,6 +64,7 @@ class BlocksStore @Inject constructor(
     }
 
     suspend fun unblock(userId: String) {
+        val epoch = generation
         val previousIds = _blockedIds.value
         val previousUsers = _blockedUsers.value
         _blockedIds.update { it - userId }
@@ -61,6 +72,7 @@ class BlocksStore @Inject constructor(
         try {
             apiCall { api.unblock(userId) }
         } catch (e: Exception) {
+            if (epoch != generation) throw e
             _blockedIds.value = previousIds
             _blockedUsers.value = previousUsers
             throw e

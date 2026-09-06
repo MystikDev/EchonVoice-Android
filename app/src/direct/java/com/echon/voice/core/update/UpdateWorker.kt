@@ -49,7 +49,7 @@ class UpdateWorker(
         return if (silentCapable) {
             runCatching {
                 val apk = installer.download(UpdateConfig.LATEST_APK_URL, expectedSha256 = status.release.sha256)
-                installer.install(apk)
+                installer.install(apk, status.release.versionCode)
             }.fold(
                 onSuccess = {
                     UpdateNotifier.cancel(applicationContext)

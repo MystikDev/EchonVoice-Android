@@ -22,6 +22,9 @@ class SessionStore @Inject constructor(
     @Volatile
     private var refresh: String? = storage.refreshToken
 
+    @Volatile var generation: Long = 0
+        private set
+
     private val _unauthorized = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     /** Emits when a 401 could not be recovered (refresh failed) — sign the user out. */
@@ -30,6 +33,9 @@ class SessionStore @Inject constructor(
     val accessToken: String? get() = access
     val refreshToken: String? get() = refresh
     val hasSession: Boolean get() = access != null || refresh != null
+
+    @Synchronized
+    fun credentials(): SessionCredentials = SessionCredentials(access, refresh, generation)
 
     /**
      * Adopt a login/register session. A null [refresh] means "the response body
@@ -42,6 +48,7 @@ class SessionStore @Inject constructor(
      */
     @Synchronized
     fun setTokens(access: String?, refresh: String?) {
+        generation++
         this.access = access
         storage.accessToken = access
         if (refresh != null) {
@@ -58,7 +65,8 @@ class SessionStore @Inject constructor(
      * the next launch. Persisted so it restores across app restarts.
      */
     @Synchronized
-    fun onRefreshCookie(token: String) {
+    fun onRefreshCookie(token: String, expectedGeneration: Long = generation) {
+        if (expectedGeneration != generation) return
         if (token.isEmpty() || token == refresh) return
         refresh = token
         storage.refreshToken = token
@@ -66,17 +74,27 @@ class SessionStore @Inject constructor(
 
     /** Update just the access token (and rotated refresh) after a successful refresh. */
     @Synchronized
-    fun updateAfterRefresh(access: String, rotatedRefresh: String?) {
+    fun updateAfterRefresh(access: String, rotatedRefresh: String?, expectedGeneration: Long = generation): Boolean {
+        if (expectedGeneration != generation) return false
         this.access = access
         storage.accessToken = access
         if (rotatedRefresh != null) {
             this.refresh = rotatedRefresh
             storage.refreshToken = rotatedRefresh
         }
+        return true
+    }
+
+    @Synchronized
+    fun clearIfCurrent(expectedGeneration: Long): Boolean {
+        if (expectedGeneration != generation) return false
+        clear()
+        return true
     }
 
     @Synchronized
     fun clear() {
+        generation++
         access = null
         refresh = null
         storage.clear()
@@ -86,3 +104,5 @@ class SessionStore @Inject constructor(
         _unauthorized.tryEmit(Unit)
     }
 }
+
+data class SessionCredentials(val access: String?, val refresh: String?, val generation: Long)

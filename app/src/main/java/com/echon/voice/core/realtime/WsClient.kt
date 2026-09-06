@@ -3,6 +3,8 @@ package com.echon.voice.core.realtime
 import com.echon.voice.core.di.ApplicationScope
 import com.echon.voice.core.network.ApiConfig
 import com.echon.voice.core.network.EchonApi
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -75,8 +77,10 @@ class WsClient @Inject constructor(
     }
 
     private suspend fun loop() {
-        while (scope.isActive && runJob?.isActive != false) {
+        while (currentCoroutineContext().isActive) {
             val closed = CompletableDeferred<Unit>()
+            var connection: WebSocket? = null
+            val connectionJob = currentCoroutineContext()[Job]!!
             try {
                 val ticket = api.wsTicket().ticket
                 // Percent-encode the ticket so reserved characters (+, /, =) in a
@@ -85,21 +89,29 @@ class WsClient @Inject constructor(
                 val request = Request.Builder()
                     .url("${ApiConfig.WS_URL}?ticket=$encodedTicket")
                     .build()
-                client.newWebSocket(request, listener(closed))
+                connection = client.newWebSocket(request, listener(closed, connectionJob))
+                socket = connection
                 closed.await() // suspends until this connection drops
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 // Ticket fetch / connect failure → fall through to backoff.
+            } finally {
+                connection?.cancel() // Includes cancellation during the HTTP handshake.
+                if (socket === connection) socket = null
             }
-            socket = null
-            if (!scope.isActive) break
+            if (!currentCoroutineContext().isActive) break
             _events.tryEmit(WsEvent.SocketDisconnected)
             delay(BACKOFF_MS)
         }
     }
 
-    private fun listener(closed: CompletableDeferred<Unit>) = object : WebSocketListener() {
+    private fun listener(closed: CompletableDeferred<Unit>, connectionJob: Job) = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            socket = webSocket
+            if (!connectionJob.isActive) {
+                webSocket.cancel()
+                return
+            }
             // Surface connect first so stores can REST-reconcile dropped frames,
             // then re-subscribe to every previously-joined channel.
             _events.tryEmit(WsEvent.SocketConnected)
@@ -111,6 +123,7 @@ class WsClient @Inject constructor(
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
+            if (!connectionJob.isActive || socket !== webSocket) return
             WsEventParser.parse(text)?.let { _events.tryEmit(it) }
         }
 

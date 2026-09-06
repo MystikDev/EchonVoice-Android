@@ -9,6 +9,11 @@ import com.echon.voice.model.LoginRequest
 import com.echon.voice.model.LoginResponse
 import com.echon.voice.model.RegisterRequest
 import com.echon.voice.model.User
+import com.echon.voice.feature.voice.VoiceCallStore
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,9 +31,14 @@ import javax.inject.Singleton
 class AuthStore @Inject constructor(
     private val api: EchonApi,
     private val session: SessionStore,
+    private val voiceCalls: VoiceCallStore,
+    private val accountData: com.echon.voice.core.storage.AccountData,
+    private val realtime: dagger.Lazy<com.echon.voice.core.realtime.RealtimeStore>,
     @ApplicationScope scope: CoroutineScope,
 ) {
     enum class Phase { Loading, SignedOut, NeedsEula, SignedIn }
+
+    private var signingOut = false
 
     private val _phase = MutableStateFlow(Phase.Loading)
     val phase: StateFlow<Phase> = _phase.asStateFlow()
@@ -38,7 +48,7 @@ class AuthStore @Inject constructor(
 
     init {
         // A 401 that refresh couldn't recover signs the user out everywhere.
-        scope.launch { session.unauthorized.collect { signOut() } }
+        scope.launch { session.unauthorized.collect { if (!session.hasSession) signOut() } }
     }
 
     /**
@@ -84,11 +94,21 @@ class AuthStore @Inject constructor(
         _phase.value = Phase.SignedIn
     }
 
-    suspend fun signOut() {
-        runCatching { apiCall { api.logout() } }
-        session.clear()
-        _currentUser.value = null
-        _phase.value = Phase.SignedOut
+    suspend fun signOut() = withContext(NonCancellable + Dispatchers.Main.immediate) {
+        if (signingOut) return@withContext
+        signingOut = true
+        _phase.value = Phase.Loading
+        voiceCalls.stopForSignOut()
+        try {
+            realtime.get().stop()
+            withTimeoutOrNull(5_000) { runCatching { apiCall { api.logout() } } }
+        } finally {
+            session.clear()
+            accountData.clear()
+            _currentUser.value = null
+            _phase.value = Phase.SignedOut
+            signingOut = false
+        }
     }
 
     private fun storeSession(response: LoginResponse) {
@@ -96,13 +116,14 @@ class AuthStore @Inject constructor(
     }
 
     private suspend fun refreshMe() {
+        val generation = session.generation
         try {
             val me = apiCall { api.me() }
+            if (generation != session.generation || signingOut) return
             _currentUser.value = me.user
             _phase.value = if (me.user.tosAccepted == true) Phase.SignedIn else Phase.NeedsEula
         } catch (e: ApiException.Unauthorized) {
-            session.clear()
-            _phase.value = Phase.SignedOut
+            signOut()
         }
     }
 }

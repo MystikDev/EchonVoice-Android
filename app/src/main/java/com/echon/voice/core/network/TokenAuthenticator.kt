@@ -29,14 +29,18 @@ class TokenAuthenticator @Inject constructor(
         // Only ever refresh + retry with credentials against the Echon API. Coil
         // and any absolute media URL can 401 from a third-party host; without this
         // guard OkHttp would re-send the request WITH the victim's bearer attached.
-        if (!TlsPinning.isApiHost(response.request.url.host)) return null
+        if (!TlsPinning.isApiOrigin(response.request.url)) return null
+
+        val generation = response.request.tag(SessionGeneration::class.java)?.value ?: return null
+        val credentials = session.credentials()
+        if (generation != credentials.generation) return null
 
         // Give up after one retry to avoid infinite 401 loops.
         if (priorResponseCount(response) >= 2) return null
 
         val failedToken = response.request.header("Authorization")
             ?.removePrefix("Bearer ")
-        val current = session.accessToken
+        val current = credentials.access
 
         // Another thread already refreshed while we were blocked — retry as-is.
         if (current != null && current != failedToken) {
@@ -45,20 +49,18 @@ class TokenAuthenticator @Inject constructor(
                 .build()
         }
 
-        val refreshToken = session.refreshToken ?: run {
-            session.clear()
-            session.signalUnauthorized()
+        val refreshToken = credentials.refresh ?: run {
+            if (session.clearIfCurrent(generation)) session.signalUnauthorized()
             return null
         }
 
-        val refreshed = refresher.refresh(refreshToken)
+        val refreshed = refresher.refresh(refreshToken, generation)
         if (refreshed == null) {
-            session.clear()
-            session.signalUnauthorized()
+            if (session.clearIfCurrent(generation)) session.signalUnauthorized()
             return null
         }
 
-        session.updateAfterRefresh(refreshed.token, refreshed.refreshToken)
+        if (!session.updateAfterRefresh(refreshed.token, refreshed.refreshToken, generation)) return null
         return response.request.newBuilder()
             .header("Authorization", "Bearer ${refreshed.token}")
             .build()
