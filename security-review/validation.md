@@ -58,3 +58,17 @@ Original build reports remain under `~/.cache/echon-android-build/app/reports/`.
 The review APK copies are local files under `distribution/review/`; they are
 ignored by Git. Their hashes describe the locally tested builds, separately from
 the signed APK rebuilt and distributed by the GitHub release workflow.
+
+## Publication and advisory CI follow-up
+
+Version 2.0.24 was published through the release workflow. The public APK's
+version, hash, signature continuity, 16 KiB packaging alignment, and GitHub build
+provenance were verified; the public artifact is recorded separately in
+`artifacts.json`.
+
+The existing advisory workflow referenced a non-executable action directory,
+used a removed flag, and did not recognize Kotlin Gradle package sources. It now
+resolves the current `directReleaseRuntimeClasspath` into CycloneDX with
+`./gradlew -I gradle/runtime-sbom.init.gradle :app:writeSecuritySbom` before scanning.
+The inventory includes Maven platform/metadata modules (173 components locally),
+whereas the original review query covered 140 runtime artifact coordinates.

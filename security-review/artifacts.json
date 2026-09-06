@@ -28,5 +28,24 @@
     "cold_start_ms": 224,
     "android_runtime_crash_log": "no entries returned",
     "remote_audio_tested": false
+  },
+  "published_direct_release": {
+    "version": "2.0.24",
+    "versionCode": 25,
+    "source_commit": "8a6bbb7e97a58f0b73f5d0df3ba696d077fad710",
+    "release_url": "https://github.com/MystikDev/EchonVoice-Android/releases/tag/v2.0.24",
+    "workflow_url": "https://github.com/MystikDev/EchonVoice-Android/actions/runs/34035767537",
+    "website_url": "https://echon-voice.com/android.html",
+    "download_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
+    "bytes": 50954743,
+    "sha256": "20f8e0063f58e6e5ff94f41295fad3273fbf782d79936f16efecc4bd9d2d2e6f",
+    "signer_certificate_sha256": "bdfbbbf992e30b1b5bf07fdcedc09133c1db684623aab457c2ef95ecc5e6b836",
+    "matches_previous_release_signer": true,
+    "signature_verified": true,
+    "zip_16kb_alignment_verified": true,
+    "public_manifest_hash_matches": true,
+    "github_build_provenance_verified": true,
+    "download_verified_on": "2026-09-06",
+    "device_tested_ci_artifact": false
   }
 }
