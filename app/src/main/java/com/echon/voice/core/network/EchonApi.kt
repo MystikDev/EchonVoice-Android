@@ -202,6 +202,12 @@ interface EchonApi {
     @GET("v1/servers/{id}/members")
     suspend fun serverMembers(@Path("id") serverId: String): MembersResponse
 
+    @GET("v1/servers/{id}/presence")
+    suspend fun serverPresence(@Path("id") serverId: String): com.echon.voice.core.realtime.PresenceResponse
+
+    @GET("v1/me/social-presence")
+    suspend fun socialPresence(): com.echon.voice.core.realtime.PresenceResponse
+
     // --- Voice ---
 
     @GET("v1/servers/{id}/voice")

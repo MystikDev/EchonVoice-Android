@@ -4,6 +4,6 @@
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Security improvements for sign-in, sign-out, private data, and app updates. Full-screen streams now support portrait/landscape viewing, fit/fill, pinch zoom, and zoom controls. Improved call lifecycle and audio reliability; live screen-share audio testing remains ongoing.",
+  "notes": "Fixes server member online/offline status and population counts. Presence now loads when you connect, updates live, and recovers after reconnecting. Idle and Do Not Disturb display correctly. Improved connection heartbeat and background recovery.",
   "sha256": "20f8e0063f58e6e5ff94f41295fad3273fbf782d79936f16efecc4bd9d2d2e6f"
 }

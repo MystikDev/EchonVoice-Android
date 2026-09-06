@@ -1,5 +1,12 @@
 # Echon Android — Build Plan
 
+## Presence correction — 2.0.25
+- [x] Review snapshot/event contract and missing member presence UI.
+- [x] Implement snapshot reconciliation, correct status grouping, and socket heartbeat/recovery.
+- [x] Verify both unit suites, lint, local WebSocket integration, and member-screen emulator regression.
+- [ ] Publish 2.0.25 and verify the public APK/update manifest.
+
+
 ## September 2026 security and streaming review
 - [x] Confirm scope: native Kotlin app, not the legacy WebView wrapper.
 - [x] Inspect authentication, updates, exported components, storage, and LiveKit lifecycle.

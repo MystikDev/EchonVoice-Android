@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.echon.voice.model.User
+import com.echon.voice.core.realtime.PresenceStatus
 
 /** Presence dot colors, matching the iOS theme (success / warning). */
 private val OnlineColor = Color(0xFF4ADE4A)
@@ -25,21 +26,17 @@ private val IdleColor = Color(0xFFFFD24D)
 private fun presenceColor(status: String?, offline: Color): Color = when (status) {
     "online" -> OnlineColor
     "idle" -> IdleColor
+    "dnd" -> Color(0xFFEF4444)
     else -> offline
 }
 
 /**
- * Small status dot for a user's presence ("online" | "idle" | anything else =
- * offline), ringed with the surface color so it reads on top of an avatar.
+ * Small status dot for a user's presence (online, idle, do not disturb, offline, or unknown), ringed with the surface color so it reads on top of an avatar.
  */
 @Composable
 fun PresenceDot(status: String?, size: Dp = 10.dp, modifier: Modifier = Modifier) {
     val shape = if (LocalRetroSkin.current) RectangleShape else CircleShape
-    val label = when (status) {
-        "online" -> "Online"
-        "idle" -> "Idle"
-        else -> "Offline"
-    }
+    val label = PresenceStatus.label(status)
     Box(
         modifier = modifier
             .size(size)
@@ -53,7 +50,7 @@ fun PresenceDot(status: String?, size: Dp = 10.dp, modifier: Modifier = Modifier
 /**
  * [Avatar] with a [PresenceDot] overlaid bottom-trailing, as on iOS. Pass
  * `null` [status] for users with no known presence; [showWhenUnknown] decides
- * whether that renders an offline dot (friends list) or nothing (DM list).
+ * whether that renders an unavailable-status dot (friends list) or nothing (DM list).
  */
 @Composable
 fun AvatarWithPresence(

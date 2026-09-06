@@ -6,7 +6,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * One frame from wss://echon-voice.com/v1/ws, plus synthetic lifecycle events.
@@ -51,7 +51,7 @@ private data class ReadStatePayload(val channelId: String? = null)
 object WsEventParser {
     fun parse(text: String): WsEvent? {
         val root = runCatching { EchonJson.parseToJsonElement(text).jsonObject }.getOrNull() ?: return null
-        val name = (root["event"] ?: root["type"])?.jsonPrimitive?.content ?: return null
+        val name = ((root["event"] ?: root["type"]) as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
         val data: JsonElement? = root["data"]
 
         fun <T> payload(serializer: KSerializer<T>): T? =
@@ -76,7 +76,8 @@ object WsEventParser {
             }
             "presence-changed", "presence.update" -> {
                 val body = payload(PresencePayload.serializer())
-                if (body?.userId != null) WsEvent.PresenceChanged(body.userId, body.status ?: "offline")
+                if (!body?.userId.isNullOrBlank() && body?.status in PresenceStatus.supported)
+                    WsEvent.PresenceChanged(body!!.userId!!, body.status!!)
                 else WsEvent.Unknown(name)
             }
             "read-state-updated" -> WsEvent.ReadStateUpdated(payload(ReadStatePayload.serializer())?.channelId)

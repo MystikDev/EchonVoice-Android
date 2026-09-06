@@ -38,6 +38,8 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var deepLinkStore: DeepLinkStore
     @Inject lateinit var appPreferences: AppPreferences
     @Inject lateinit var voiceCalls: VoiceCallStore
+    @Inject lateinit var realtimeSocket: com.echon.voice.core.realtime.WsClient
+    private var backgroundedAt: Long? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,12 +67,19 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         voiceCalls.setCameraForeground(true)
+        backgroundedAt?.let {
+            if (android.os.SystemClock.elapsedRealtime() - it > 2_000) realtimeSocket.reconnect()
+        }
+        backgroundedAt = null
     }
 
     override fun onStop() {
         // Rotation keeps capture; true backgrounding stops camera, while call audio
         // remains owned by the microphone foreground service.
-        if (!isChangingConfigurations) voiceCalls.setCameraForeground(false)
+        if (!isChangingConfigurations) {
+            voiceCalls.setCameraForeground(false)
+            backgroundedAt = android.os.SystemClock.elapsedRealtime()
+        }
         super.onStop()
     }
 

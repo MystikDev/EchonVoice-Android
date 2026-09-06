@@ -89,7 +89,7 @@ fun DMListScreen(
                 // (group DMs have no single "other" user, so none there).
                 AvatarWithPresence(
                     user = other,
-                    status = other?.id?.let { presence[it] },
+                    status = other?.id?.let { presence.status(it) },
                     size = 44.dp,
                     showWhenUnknown = false,
                 )

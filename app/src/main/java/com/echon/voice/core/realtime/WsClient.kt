@@ -19,7 +19,11 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
-import org.json.JSONObject
+import com.echon.voice.core.network.EchonJson
+import kotlinx.serialization.encodeToString
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.TimeoutCancellationException
 import java.util.Collections
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -73,12 +77,17 @@ class WsClient @Inject constructor(
     }
 
     private fun send(frame: Map<String, String>) {
-        socket?.send(JSONObject(frame).toString())
+        socket?.send(EchonJson.encodeToString(frame))
     }
+
+    /** Resume after background/network suspension with a fresh server snapshot. */
+    fun reconnect() { socket?.cancel() }
 
     private suspend fun loop() {
         while (currentCoroutineContext().isActive) {
             val closed = CompletableDeferred<Unit>()
+            val opened = CompletableDeferred<Unit>()
+            val incoming = Channel<Unit>(Channel.CONFLATED)
             var connection: WebSocket? = null
             val connectionJob = currentCoroutineContext()[Job]!!
             try {
@@ -89,14 +98,31 @@ class WsClient @Inject constructor(
                 val request = Request.Builder()
                     .url("${ApiConfig.WS_URL}?ticket=$encodedTicket")
                     .build()
-                connection = client.newWebSocket(request, listener(closed, connectionJob))
+                connection = client.newWebSocket(request, listener(closed, opened, incoming, connectionJob))
                 socket = connection
-                closed.await() // suspends until this connection drops
+                coroutineScope {
+                    val heartbeat = launch {
+                        try {
+                            maintainWsHeartbeat(opened, incoming) {
+                                connection.send(EchonJson.encodeToString(mapOf("type" to "ping")))
+                            }
+                        } catch (_: TimeoutCancellationException) {
+                            closed.complete(Unit)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            closed.complete(Unit)
+                        }
+                    }
+                    try { closed.await() } finally { heartbeat.cancel() }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 // Ticket fetch / connect failure → fall through to backoff.
             } finally {
+                closed.complete(Unit)
+                incoming.close()
                 connection?.cancel() // Includes cancellation during the HTTP handshake.
                 if (socket === connection) socket = null
             }
@@ -106,24 +132,32 @@ class WsClient @Inject constructor(
         }
     }
 
-    private fun listener(closed: CompletableDeferred<Unit>, connectionJob: Job) = object : WebSocketListener() {
+    private fun listener(
+        closed: CompletableDeferred<Unit>,
+        opened: CompletableDeferred<Unit>,
+        incoming: Channel<Unit>,
+        connectionJob: Job,
+    ) = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            if (!connectionJob.isActive) {
+            if (!connectionJob.isActive || closed.isCompleted) {
                 webSocket.cancel()
                 return
             }
+            socket = webSocket
+            opened.complete(Unit)
             // Surface connect first so stores can REST-reconcile dropped frames,
             // then re-subscribe to every previously-joined channel.
             _events.tryEmit(WsEvent.SocketConnected)
             synchronized(joinedChannels) {
                 joinedChannels.forEach {
-                    webSocket.send(JSONObject(mapOf("type" to "channel:join", "channel_id" to it)).toString())
+                    webSocket.send(EchonJson.encodeToString(mapOf("type" to "channel:join", "channel_id" to it)))
                 }
             }
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
-            if (!connectionJob.isActive || socket !== webSocket) return
+            if (!connectionJob.isActive || closed.isCompleted || socket !== webSocket) return
+            incoming.trySend(Unit)
             WsEventParser.parse(text)?.let { _events.tryEmit(it) }
         }
 

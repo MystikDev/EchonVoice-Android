@@ -11,6 +11,7 @@ import com.echon.voice.feature.voice.VoiceStore
 import com.echon.voice.model.ChannelKind
 import com.echon.voice.model.ChatChannelKind
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -33,6 +34,7 @@ import javax.inject.Singleton
 @Singleton
 class RealtimeStore @Inject constructor(
     private val ws: WsClient,
+    private val presenceStore: PresenceStore,
     private val chat: ChatStores,
     private val servers: ServersStore,
     private val auth: AuthStore,
@@ -48,8 +50,7 @@ class RealtimeStore @Inject constructor(
     private val _typingUsers = MutableStateFlow<Map<String, Set<String>>>(emptyMap())
     val typingUsers: StateFlow<Map<String, Set<String>>> = _typingUsers.asStateFlow()
 
-    private val _presence = MutableStateFlow<Map<String, String>>(emptyMap())
-    val presence: StateFlow<Map<String, String>> = _presence.asStateFlow()
+    val presence = presenceStore.social
 
     private val _unreadChannelIds = MutableStateFlow<Set<String>>(emptySet())
     val unreadChannelIds: StateFlow<Set<String>> = _unreadChannelIds.asStateFlow()
@@ -66,7 +67,7 @@ class RealtimeStore @Inject constructor(
 
     fun start() {
         if (consumeJob != null) return
-        consumeJob = scope.launch { ws.events.collect { handle(it) } }
+        consumeJob = scope.launch(start = CoroutineStart.UNDISPATCHED) { ws.events.collect { handle(it) } }
         ws.start()
     }
 
@@ -83,7 +84,7 @@ class RealtimeStore @Inject constructor(
         typingExpiry.clear()
         lastTypingSentAt = 0L
         openChannelId = null
-        _presence.value = emptyMap()
+        presenceStore.disconnect()
         _typingUsers.value = emptyMap()
         _unreadChannelIds.value = emptySet()
     }
@@ -140,7 +141,12 @@ class RealtimeStore @Inject constructor(
                     openChannelId?.let { chat.store(it).reconcileLatest() }
                 }
             }
-            is WsEvent.SocketDisconnected -> _isConnected.value = false
+            is WsEvent.SocketDisconnected -> {
+                _isConnected.value = false
+                presenceStore.disconnect()
+            }
+            // Ready follows server registration; querying on TCP open can predate presence.
+            is WsEvent.Ready -> presenceStore.connect()
             is WsEvent.MessageNew -> {
                 val channelId = event.message.channelId ?: return
                 val kind = if (event.message.channelKind == "dm") ChatChannelKind.DM else ChatChannelKind.SERVER
@@ -164,13 +170,12 @@ class RealtimeStore @Inject constructor(
                     clearTyping(event.userId, event.channelId)
                 }
             }
-            is WsEvent.PresenceChanged -> _presence.update { it + (event.userId to event.status) }
+            is WsEvent.PresenceChanged -> presenceStore.apply(event.userId, event.status)
             is WsEvent.UserBlocked -> blocks.applyRemote(event.userId, true)
             is WsEvent.UserUnblocked -> blocks.applyRemote(event.userId, false)
             is WsEvent.FriendsChanged -> scope.launch { runCatching { friends.load() } }
             is WsEvent.VoiceStateChanged -> voice.refresh()
             is WsEvent.ReadStateUpdated,
-            is WsEvent.Ready,
             is WsEvent.Unknown,
             -> Unit
         }

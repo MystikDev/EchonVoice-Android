@@ -29,8 +29,8 @@ android {
         applicationId = "com.echon.voice"
         minSdk = 24
         targetSdk = 35
-        versionCode = 25
-        versionName = "2.0.24"
+        versionCode = 26
+        versionName = "2.0.25"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }

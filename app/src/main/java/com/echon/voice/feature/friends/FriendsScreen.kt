@@ -116,7 +116,7 @@ fun FriendsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    AvatarWithPresence(user = friend, status = presence[friend.id], size = 36.dp)
+                    AvatarWithPresence(user = friend, status = presence.status(friend.id), size = 36.dp)
                     Column(modifier = Modifier.weight(1f)) {
                         Text(friend.username ?: "Unknown")
                         Text(friend.displayHandle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
