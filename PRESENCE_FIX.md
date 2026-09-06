@@ -59,3 +59,12 @@ server with already-online members; change Online/Idle/DND/Invisible from the we
 client; disconnect/reconnect one device; background/resume Android; sign out and
 switch accounts. Status and counts should converge without leaving stale online users
 or temporarily classifying the entire server offline.
+
+## Published release
+
+Version 2.0.25 was published through the existing signed GitHub workflow. The APK
+downloaded from the website's stable link passes package/version, signing continuity,
+manifest SHA-256, 16 KiB zip alignment, and GitHub source provenance checks. See
+`distribution/verification-2.0.25.json`. The GitHub advisory scan examined 173 resolved
+Maven components and exited successfully. Device checks used the local build; the
+CI rebuild was separately verified as a public download.

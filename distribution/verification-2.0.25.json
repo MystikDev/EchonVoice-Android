@@ -1,0 +1,20 @@
+{
+  "version_name": "2.0.25",
+  "version_code": 26,
+  "source_commit": "b5c81c67d20a6f6c094ac6d044ff9448542f136f",
+  "release_url": "https://github.com/MystikDev/EchonVoice-Android/releases/tag/v2.0.25",
+  "workflow_url": "https://github.com/MystikDev/EchonVoice-Android/actions/runs/34066365599",
+  "website_url": "https://echon-voice.com/android.html",
+  "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
+  "sha256": "23ba4caecf9ad123269aea1b8dc2f455215c95d9a672d84b30d9979e7ad5e213",
+  "signer_certificate_sha256": "bdfbbbf992e30b1b5bf07fdcedc09133c1db684623aab457c2ef95ecc5e6b836",
+  "package_version_verified": true,
+  "signature_continuity_verified": true,
+  "zip_16kb_alignment_verified": true,
+  "public_manifest_hash_verified": true,
+  "github_provenance_and_source_commit_verified": true,
+  "unit_tests_passed": 96,
+  "optional_unit_tests_skipped": 2,
+  "emulator_tests_passed": 2,
+  "production_multi_device_tested": false
+}
