@@ -97,8 +97,8 @@ Sources reviewed:
   encrypted empty record; restart reaches sign-in.
 - Resolved runtime inventory: 198 Maven components, including LiveKit 2.28.2,
   WebRTC 144.7559.14, protobuf-javalite 3.25.9, and Security Crypto 1.1.0.
-- CI device matrix, dependency scan, final signed release, and public-artifact
-  results are recorded below when complete.
+- CI device matrix, dependency scan, signed release, and public-artifact
+  verification completed successfully; evidence is recorded below.
 
 ## Physical acceptance still required
 
@@ -126,5 +126,38 @@ The startup gate now installs the complete APK with `--no-incremental`, bounds
 ADB operations, removes stale UI dumps, and prints UI/activity/crash diagnostics
 on failure. It still requires both a live process and the actual login screen;
 no app assertion or release gate was removed. The updated gate passes locally
-on the signed release. The final preflight and tag pipeline must pass before
+on the signed release. The final preflight and tag pipeline both passed before
 publication.
+
+
+## Published release verification — September 12, 2026
+
+[2.0.27 (28)](https://github.com/MystikDev/EchonVoice-Android/releases/tag/v2.0.27)
+is published through the website's existing stable Android download link.
+The source tag points to `d43d745a38cbf2044d8cd9e38f3ff9da1e38f916`.
+
+- [Final preflight](https://github.com/MystikDev/EchonVoice-Android/actions/runs/34707112969)
+  and [security scan](https://github.com/MystikDev/EchonVoice-Android/actions/runs/34707112960)
+  passed. The preflight's first Android 7 attempt timed out while installing the
+  debug APK, before any tests ran. That job passed on a fresh-runner rerun;
+  the other six jobs passed their first attempt.
+- [Tagged release pipeline](https://github.com/MystikDev/EchonVoice-Android/actions/runs/34708513305)
+  passed on its first attempt: both variants' unit/lint/build checks, all 36
+  instrumentation executions across six device configurations, all six minified
+  startup checks, and the 198-component dependency scan. Firebase was enabled
+  in the signed release.
+- Downloaded the APK from the website's actual stable GitHub link. Verified
+  package/version, update-manifest SHA-256, GitHub asset digest, signing-certificate
+  continuity, ZIP 16 KiB alignment, every packaged 64-bit native library's load
+  alignment, and GitHub build provenance bound to the exact tag/source/workflow.
+- The public APK installed in place and reached the actual login screen on the
+  dedicated Android 15 ARM64 emulator. Separately, the locally signed build
+  upgraded a signed-out public 2.0.26 installation on Android 16 with 16 KiB pages,
+  without clearing data or changing its original install time.
+- Public APK SHA-256:
+  `be753a693c858b44efc09a6ed54ef230a1c4da7222f814421b7272c7cfce5e66`.
+- Machine-readable evidence:
+  [distribution/verification-2.0.27.json](distribution/verification-2.0.27.json).
+
+These checks do not replace the physical, authenticated-upgrade and two-device
+listening acceptance described above.

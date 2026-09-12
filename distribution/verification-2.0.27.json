@@ -1,0 +1,60 @@
+{
+  "version_name": "2.0.27",
+  "version_code": 28,
+  "verified_at": "2026-09-12T17:53:38.904315+00:00",
+  "source_commit": "d43d745a38cbf2044d8cd9e38f3ff9da1e38f916",
+  "release_url": "https://github.com/MystikDev/EchonVoice-Android/releases/tag/v2.0.27",
+  "workflow_url": "https://github.com/MystikDev/EchonVoice-Android/actions/runs/34708513305",
+  "pre_release_validation_url": "https://github.com/MystikDev/EchonVoice-Android/actions/runs/34707112969",
+  "pre_release_security_url": "https://github.com/MystikDev/EchonVoice-Android/actions/runs/34707112960",
+  "website_url": "https://echon-voice.com/android.html",
+  "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
+  "sha256": "be753a693c858b44efc09a6ed54ef230a1c4da7222f814421b7272c7cfce5e66",
+  "signer_certificate_sha256": "bdfbbbf992e30b1b5bf07fdcedc09133c1db684623aab457c2ef95ecc5e6b836",
+  "min_sdk": 24,
+  "target_sdk": 36,
+  "compile_sdk": 37,
+  "package_version_verified": true,
+  "signature_continuity_verified": true,
+  "zip_16kb_alignment_verified": true,
+  "native_64bit_load_alignment_verified": [
+    {
+      "library": "lib/arm64-v8a/libandroidx.graphics.path.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/arm64-v8a/liblkjingle_peerconnection_so.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/x86_64/libandroidx.graphics.path.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/x86_64/liblkjingle_peerconnection_so.so",
+      "minimum_load_alignment": 16384
+    }
+  ],
+  "firebase_enabled_in_release": true,
+  "preflight_attempts": 2,
+  "public_apk_startup_verified_locally": true,
+  "public_manifest_hash_verified": true,
+  "github_asset_digest_verified": true,
+  "github_provenance_and_source_commit_verified": true,
+  "website_download_verified": true,
+  "local_unit_test_executions_passed": 122,
+  "optional_unit_test_executions_skipped": 2,
+  "lint_errors": 0,
+  "emulator_configurations_passed": 6,
+  "emulator_test_executions_passed": 36,
+  "minified_release_startup_checks_passed": 6,
+  "android_16_page_sizes_verified": [
+    4096,
+    16384
+  ],
+  "runtime_dependencies_scanned": 198,
+  "signed_out_upgrade_from_2_0_26_verified_locally": true,
+  "corrupt_session_recovery_ui_verified_locally": true,
+  "authenticated_session_upgrade_tested": false,
+  "production_multi_device_audio_tested": false
+}
