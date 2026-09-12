@@ -1,6 +1,8 @@
 package com.echon.voice.core.network
 
 import com.echon.voice.model.RefreshResponse
+import java.io.IOException
+import kotlinx.serialization.SerializationException
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -18,7 +20,7 @@ import javax.inject.Singleton
 class TokenRefresher @Inject constructor(
     @Named("refresh") private val client: OkHttpClient,
 ) {
-    /** @return the new tokens, or null if the refresh failed. */
+    /** Null means the server rejected the credentials; transient failures preserve them. */
     fun refresh(refreshToken: String, generation: Long): RefreshResponse? {
         val request = Request.Builder()
             .url(ApiConfig.BASE_URL + "v1/auth/refresh")
@@ -28,13 +30,15 @@ class TokenRefresher @Inject constructor(
             .build()
         return try {
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return null
-                val body = response.body?.string() ?: return null
+                if (response.code == 401 || response.code == 403) return null
+                if (!response.isSuccessful) throw IOException("Session refresh is temporarily unavailable")
+                val body = response.body?.string() ?: throw IOException("Missing session refresh response")
                 EchonJson.decodeFromString(RefreshResponse.serializer(), body)
             }
-        } catch (e: com.echon.voice.core.storage.TokenStorageException) {
-            // A local persistence failure must never be interpreted as server revocation.
-            throw e
-        } catch (_: Exception) { null }
+        } catch (e: SerializationException) {
+            throw IOException("Invalid session refresh response", e)
+        }
+        // Network and local storage IOExceptions propagate to apiCall. Neither is
+        // evidence of revocation, and neither should erase a recoverable session.
     }
 }

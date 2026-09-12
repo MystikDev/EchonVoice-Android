@@ -10,7 +10,7 @@ SwiftUI iOS app. Kotlin + Jetpack Compose, talking to the same `/v1` REST + WebS
 - OkHttp `WebSocket` for realtime; OkHttp `CertificatePinner` (ISRG Root X1/X2) for pinning
 - Hilt for DI
 - Coil (images), LiveKit Android SDK (voice)
-- EncryptedSharedPreferences for session tokens
+- Atomic AES-256-GCM session records backed by Android Keystore; verified migration from legacy encrypted preferences
 
 ## Architecture
 Single `:app` module, package-by-feature under `com.echon.voice`:
@@ -53,4 +53,6 @@ audio/device acceptance checks. Debug verification can use
 release package client; normal release builds keep Firebase enabled.
 
 [Foundation upgrade](FOUNDATION_UPGRADE.md) records the 2.0.26 toolchain migration,
-required release checks, and remaining calling/storage work.
+required release checks, and device compatibility.
+[Audio and storage upgrade](AUDIO_STORAGE_UPGRADE.md) records the 2.0.27 LiveKit
+update, output controls, encrypted-session migration, and physical acceptance checks.

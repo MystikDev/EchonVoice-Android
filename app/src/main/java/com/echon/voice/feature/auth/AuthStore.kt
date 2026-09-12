@@ -82,6 +82,14 @@ class AuthStore @Inject constructor(
 
     suspend fun recoverStorage(forget: Boolean) {
         _phase.value = Phase.Loading
+        if (forget) {
+            // Recovery is also offered after network failure, when storage itself
+            // is healthy and its failure observer has not cleared account state.
+            voiceCalls.stopForSignOut()
+            realtime.get().stop()
+            accountData.clear()
+            _currentUser.value = null
+        }
         val restored = withContext(Dispatchers.IO) {
             if (forget) session.resetStorage() else session.restoreTokens()
         }

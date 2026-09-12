@@ -62,7 +62,9 @@ account UI, and show recovery actions. Retry retains the stored data. Forget
 saved sign-in requires an in-app confirmation and explicitly replaces the key
 and saved session. Failed persistence is not reported as a completed sign-out.
 The refresh-cookie response is closed on persistence failure, and that failure
-is not treated as server revocation. The app also offers retry when startup
+is not treated as server revocation. Network timeouts, HTTP 429/5xx responses,
+and malformed refresh responses also retain credentials for retry; server 401/403
+rejection still clears them. The app also offers retry when startup
 cannot resolve the saved session over the network.
 
 Backup remains disabled; the new file is outside backup/transfer data. Storage
@@ -87,8 +89,9 @@ Sources reviewed:
 - Existing presence and fullscreen/rotation/renderer-disposal tests remain gates.
 - Local Android 16 ARM64 emulator: verified 16,384-byte pages; all six
   instrumentation tests passed on the final implementation.
-- Final two-flavor unit checks: 118 passed and two optional tests skipped. Lint:
+- Final two-flavor unit checks: 122 passed and two optional tests skipped. Lint:
   zero errors (42 Direct / 43 Play warnings).
+- Local Android 17 ARM64 emulator: all six integration tests passed.
 - Manual startup recovery on the dedicated signed-out debug app: corrupt record
   shows recovery; Retry and Cancel preserve it; confirmed Forget creates an
   encrypted empty record; restart reaches sign-in.
