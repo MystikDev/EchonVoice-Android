@@ -84,11 +84,14 @@ jobs:
           ram-size: ${{ matrix.api == '37.0' && '3072M' || '' }}
           heap-size: ${{ matrix.api == '37.0' && '512M' || '' }}
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          # Use the supported software backend; swiftshader_indirect is deprecated
+          # and crashes SurfaceFlinger on the Android 17 x86_64 image.
+          emulator-options: -no-window -gpu software -noaudio -no-boot-anim -no-snapshot
           script: |
+            bash scripts/wait-for-test-device.sh
             adb shell df -h /data
             if [ '${{ matrix.api }}' != '24' ]; then test "$(adb shell getconf PAGE_SIZE | tr -d '\r')" = "${{ matrix.pages }}"; fi
-            ./gradlew :app:connected${{ matrix.flavor }}DebugAndroidTest -Pechon.disableFirebase=true || { adb logcat -d -b crash; adb shell free -m; exit 1; }
+            ./gradlew :app:connected${{ matrix.flavor }}DebugAndroidTest -Pechon.disableFirebase=true || { adb logcat -d -b crash; adb logcat -d -t 300; adb shell free -m; exit 1; }
             keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/echon-startup.jks" -storepass android -keypass android -alias startup -keyalg RSA -keysize 2048 -validity 2 -dname 'CN=Echon CI'
             flavor=$(echo '${{ matrix.flavor }}' | tr '[:upper:]' '[:lower:]'); "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --ks "$RUNNER_TEMP/echon-startup.jks" --ks-pass pass:android --key-pass pass:android --out "$RUNNER_TEMP/echon-startup.apk" "app/build/outputs/apk/$flavor/release/app-$flavor-release-unsigned.apk"
             bash scripts/check-release-startup.sh "$RUNNER_TEMP/echon-startup.apk"
