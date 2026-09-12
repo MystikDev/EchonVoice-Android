@@ -1,11 +1,19 @@
 package com.echon.voice.nav
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -31,9 +39,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class RootViewModel @Inject constructor(
-    authStore: AuthStore,
+    private val authStore: AuthStore,
 ) : ViewModel() {
     val phase = authStore.phase
+    fun recoverStorage(forget: Boolean) { viewModelScope.launch { authStore.recoverStorage(forget) } }
 
     init {
         // One-shot session restore + /v1/me at app start.
@@ -61,6 +70,7 @@ fun AppRoot(
         ) { current ->
             when (current) {
                 AuthStore.Phase.Loading -> LoadingScreen()
+                AuthStore.Phase.StorageUnavailable -> StorageRecoveryScreen(viewModel::recoverStorage)
                 AuthStore.Phase.SignedOut -> AuthFlow(Modifier.safeDrawingPadding())
                 AuthStore.Phase.NeedsEula -> EulaScreen(modifier = Modifier.safeDrawingPadding())
                 AuthStore.Phase.SignedIn -> SignedInNavHost()
@@ -87,4 +97,26 @@ private fun LoadingScreen(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
     }
+}
+
+@Composable
+private fun StorageRecoveryScreen(recover: (Boolean) -> Unit) {
+    var confirmForget by rememberSaveable { mutableStateOf(false) }
+    Column(
+        Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("Saved sign-in is unavailable", style = MaterialTheme.typography.titleLarge)
+        Text("Unlock your phone, check your connection, and try again. Your saved sign-in has been kept. You can also forget it and sign in again.")
+        Button(onClick = { recover(false) }) { Text("Try again") }
+        TextButton(onClick = { confirmForget = true }) { Text("Forget saved sign-in") }
+    }
+    if (confirmForget) AlertDialog(
+        onDismissRequest = { confirmForget = false },
+        title = { Text("Forget saved sign-in?") },
+        text = { Text("This removes your saved sign-in from this phone. You will need to sign in again.") },
+        confirmButton = { TextButton(onClick = { confirmForget = false; recover(true) }) { Text("Forget") } },
+        dismissButton = { TextButton(onClick = { confirmForget = false }) { Text("Cancel") } },
+    )
 }

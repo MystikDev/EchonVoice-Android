@@ -1,5 +1,9 @@
 package com.echon.voice.core.network
 
+import com.echon.voice.core.storage.StoredTokens
+import com.echon.voice.core.storage.TokenStorageException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import com.echon.voice.core.storage.TokenStorage
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -17,13 +21,57 @@ class SessionStore @Inject constructor(
     private val storage: TokenStorage,
 ) {
     @Volatile
-    private var access: String? = storage.accessToken
+    private var access: String? = null
 
     @Volatile
-    private var refresh: String? = storage.refreshToken
+    private var refresh: String? = null
 
     @Volatile var generation: Long = 0
         private set
+
+    private val _storageUnavailable = MutableStateFlow(false)
+    val storageUnavailable = _storageUnavailable.asStateFlow()
+
+    init { restoreTokens() }
+
+    @Synchronized
+    fun restoreTokens(): Boolean = try {
+        val saved = storage.readTokens()
+        generation++
+        access = saved.access
+        refresh = saved.refresh
+        _storageUnavailable.value = false
+        true
+    } catch (_: TokenStorageException) {
+        storageFailed()
+        false
+    }
+
+    private fun storageFailed() {
+        generation++
+        access = null
+        refresh = null
+        _storageUnavailable.value = true
+    }
+
+    private fun persist(tokens: StoredTokens) {
+        try { storage.writeTokens(tokens) }
+        catch (e: TokenStorageException) { storageFailed(); throw e }
+        access = tokens.access
+        refresh = tokens.refresh
+        _storageUnavailable.value = false
+    }
+
+    /** Only called after the user explicitly chooses to forget saved sign-in. */
+    @Synchronized
+    fun resetStorage(): Boolean = try {
+        storage.reset()
+        generation++
+        access = null
+        refresh = null
+        _storageUnavailable.value = false
+        true
+    } catch (_: TokenStorageException) { storageFailed(); false }
 
     private val _unauthorized = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
@@ -48,13 +96,8 @@ class SessionStore @Inject constructor(
      */
     @Synchronized
     fun setTokens(access: String?, refresh: String?) {
+        persist(StoredTokens(access, refresh ?: this.refresh))
         generation++
-        this.access = access
-        storage.accessToken = access
-        if (refresh != null) {
-            this.refresh = refresh
-            storage.refreshToken = refresh
-        }
     }
 
     /**
@@ -68,20 +111,14 @@ class SessionStore @Inject constructor(
     fun onRefreshCookie(token: String, expectedGeneration: Long = generation) {
         if (expectedGeneration != generation) return
         if (token.isEmpty() || token == refresh) return
-        refresh = token
-        storage.refreshToken = token
+        persist(StoredTokens(access, token))
     }
 
     /** Update just the access token (and rotated refresh) after a successful refresh. */
     @Synchronized
     fun updateAfterRefresh(access: String, rotatedRefresh: String?, expectedGeneration: Long = generation): Boolean {
         if (expectedGeneration != generation) return false
-        this.access = access
-        storage.accessToken = access
-        if (rotatedRefresh != null) {
-            this.refresh = rotatedRefresh
-            storage.refreshToken = rotatedRefresh
-        }
+        persist(StoredTokens(access, rotatedRefresh ?: refresh))
         return true
     }
 
@@ -94,10 +131,9 @@ class SessionStore @Inject constructor(
 
     @Synchronized
     fun clear() {
+        // Persist the logout tombstone before reporting durable sign-out.
+        persist(StoredTokens())
         generation++
-        access = null
-        refresh = null
-        storage.clear()
     }
 
     fun signalUnauthorized() {
@@ -105,4 +141,6 @@ class SessionStore @Inject constructor(
     }
 }
 
-data class SessionCredentials(val access: String?, val refresh: String?, val generation: Long)
+data class SessionCredentials(val access: String?, val refresh: String?, val generation: Long) {
+    override fun toString() = "SessionCredentials(generation=$generation, redacted)"
+}

@@ -36,7 +36,7 @@ class AuthStore @Inject constructor(
     private val realtime: dagger.Lazy<com.echon.voice.core.realtime.RealtimeStore>,
     @ApplicationScope scope: CoroutineScope,
 ) {
-    enum class Phase { Loading, SignedOut, NeedsEula, SignedIn }
+    enum class Phase { Loading, SignedOut, NeedsEula, SignedIn, StorageUnavailable }
 
     private var signingOut = false
 
@@ -48,7 +48,18 @@ class AuthStore @Inject constructor(
 
     init {
         // A 401 that refresh couldn't recover signs the user out everywhere.
-        scope.launch { session.unauthorized.collect { if (!session.hasSession) signOut() } }
+        scope.launch(Dispatchers.Main) { session.unauthorized.collect {
+            if (!session.hasSession && !session.storageUnavailable.value) signOut()
+        } }
+        scope.launch(Dispatchers.Main) { session.storageUnavailable.collect { unavailable ->
+            if (unavailable) {
+                voiceCalls.stopForSignOut()
+                realtime.get().stop()
+                accountData.clear()
+                _currentUser.value = null
+                _phase.value = Phase.StorageUnavailable
+            }
+        } }
     }
 
     /**
@@ -57,17 +68,31 @@ class AuthStore @Inject constructor(
      * in — the [com.echon.voice.core.network.TokenAuthenticator] refreshes on 401.
      */
     suspend fun bootstrap() {
+        if (session.storageUnavailable.value) {
+            _phase.value = Phase.StorageUnavailable
+            return
+        }
         if (!session.hasSession) {
             _phase.value = Phase.SignedOut
             return
         }
-        refreshMe()
+        try { refreshMe() }
+        catch (_: ApiException) { _phase.value = Phase.StorageUnavailable }
+    }
+
+    suspend fun recoverStorage(forget: Boolean) {
+        _phase.value = Phase.Loading
+        val restored = withContext(Dispatchers.IO) {
+            if (forget) session.resetStorage() else session.restoreTokens()
+        }
+        if (!restored) { _phase.value = Phase.StorageUnavailable; return }
+        bootstrap()
     }
 
     /** @throws ApiException on failure (surfaced by the caller's screen). */
     suspend fun logIn(email: String, password: String) {
         val response = apiCall { api.login(LoginRequest(email = email, password = password)) }
-        storeSession(response)
+        apiCall { storeSession(response) }
         refreshMe()
     }
 
@@ -79,7 +104,7 @@ class AuthStore @Inject constructor(
         val response = apiCall {
             api.register(RegisterRequest(email = email, username = username, password = password, dateOfBirth = dateOfBirth))
         }
-        storeSession(response)
+        apiCall { storeSession(response) }
         refreshMe()
     }
 
@@ -103,10 +128,10 @@ class AuthStore @Inject constructor(
             realtime.get().stop()
             withTimeoutOrNull(5_000) { runCatching { apiCall { api.logout() } } }
         } finally {
-            session.clear()
+            runCatching { session.clear() }
             accountData.clear()
             _currentUser.value = null
-            _phase.value = Phase.SignedOut
+            _phase.value = if (session.storageUnavailable.value) Phase.StorageUnavailable else Phase.SignedOut
             signingOut = false
         }
     }
@@ -119,11 +144,12 @@ class AuthStore @Inject constructor(
         val generation = session.generation
         try {
             val me = apiCall { api.me() }
-            if (generation != session.generation || signingOut) return
+            if (generation != session.generation || signingOut || session.storageUnavailable.value) return
             _currentUser.value = me.user
             _phase.value = if (me.user.tosAccepted == true) Phase.SignedIn else Phase.NeedsEula
         } catch (e: ApiException.Unauthorized) {
-            signOut()
+            if (session.storageUnavailable.value) _phase.value = Phase.StorageUnavailable
+            else signOut()
         }
     }
 }

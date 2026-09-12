@@ -1,5 +1,6 @@
 package com.echon.voice.feature.voice
 
+import com.twilio.audioswitch.AudioDevice
 import android.content.Context
 import android.Manifest
 import android.content.pm.PackageManager
@@ -80,6 +81,15 @@ class VoiceCallStore @Inject constructor(
     private val _participants = MutableStateFlow<List<CallParticipant>>(emptyList())
     val participants: StateFlow<List<CallParticipant>> = _participants.asStateFlow()
 
+    private val _audio = MutableStateFlow(CallAudioState())
+    val audio: StateFlow<CallAudioState> = _audio.asStateFlow()
+    private var audioRouting: CallAudioRouting? = null
+
+    fun selectAudioDevice(device: AudioDevice?) {
+        try { audioRouting?.select(device) }
+        catch (_: Exception) { _publishError.value = "Couldn't change audio output. Try again." }
+    }
+
     private val _isMuted = MutableStateFlow(false)
     val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
 
@@ -150,6 +160,11 @@ class VoiceCallStore @Inject constructor(
                 room.videoTrackCaptureDefaults = LocalVideoTrackOptions(position = CameraPosition.FRONT)
                 room.adaptiveStream = true
                 this@VoiceCallStore.room = room
+                audioRouting = room.audioSwitchHandler?.let { handler ->
+                    CallAudioRouting(handler, sessionScope) { audio ->
+                        if (this@VoiceCallStore.room === room) _audio.value = audio
+                    }
+                }
                 eventsJob = sessionScope.launch {
                     room.events.collect { event ->
                         if (this@VoiceCallStore.room !== room) return@collect
@@ -316,6 +331,9 @@ class VoiceCallStore @Inject constructor(
         stateReportJob = null
         eventsJob?.cancel()
         eventsJob = null
+        audioRouting?.close()
+        audioRouting = null
+        _audio.value = CallAudioState()
         val oldRoom = room
         room = null
         oldRoom?.disconnect()

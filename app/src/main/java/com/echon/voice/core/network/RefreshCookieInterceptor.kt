@@ -27,15 +27,20 @@ class RefreshCookieInterceptor @Inject constructor(
         // auth endpoint on the Echon API host. Otherwise a third-party host (e.g.
         // an image URL that returns Set-Cookie) could forge/replace the session's
         // refresh token.
-        if (response.isSuccessful &&
-            TlsPinning.isApiOrigin(response.request.url) &&
-            response.request.url.encodedPath in TOKEN_ENDPOINTS
-        ) {
-            response.headers("Set-Cookie").forEach { header ->
-                parseRefreshToken(header)?.let { session.onRefreshCookie(it, generation) }
+        try {
+            if (response.isSuccessful &&
+                TlsPinning.isApiOrigin(response.request.url) &&
+                response.request.url.encodedPath in TOKEN_ENDPOINTS
+            ) {
+                response.headers("Set-Cookie").forEach { header ->
+                    parseRefreshToken(header)?.let { session.onRefreshCookie(it, generation) }
+                }
             }
+            return response
+        } catch (e: Exception) {
+            response.close()
+            throw e
         }
-        return response
     }
 
     internal companion object {

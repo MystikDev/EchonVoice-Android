@@ -26,12 +26,15 @@ class TokenRefresher @Inject constructor(
             .header("X-Refresh-Token", refreshToken)
             .tag(SessionGeneration::class.java, SessionGeneration(generation))
             .build()
-        return runCatching {
+        return try {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return null
                 val body = response.body?.string() ?: return null
                 EchonJson.decodeFromString(RefreshResponse.serializer(), body)
             }
-        }.getOrNull()
+        } catch (e: com.echon.voice.core.storage.TokenStorageException) {
+            // A local persistence failure must never be interpreted as server revocation.
+            throw e
+        } catch (_: Exception) { null }
     }
 }

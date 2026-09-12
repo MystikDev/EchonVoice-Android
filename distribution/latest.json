@@ -4,6 +4,6 @@
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Improved compatibility with newer Android versions, refreshed app foundations, and more reliable background updating. Includes expanded release checks across supported Android versions and fixes for notification permission handling.",
+  "notes": "Updated LiveKit audio engine, added audio output selection and interruption notices, and migrated saved sign-in to atomic Android Keystore encryption with safe recovery.",
   "sha256": "8337c9abf1d5ae6538f6c90a4f61f9c5bbed70e2a94f7f552dc03df2ef744daa"
 }

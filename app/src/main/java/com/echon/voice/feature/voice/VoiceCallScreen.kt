@@ -1,5 +1,8 @@
 package com.echon.voice.feature.voice
 
+import com.twilio.audioswitch.AudioDevice
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -74,6 +77,8 @@ class VoiceCallViewModel @Inject constructor(
 
     val state = store.state
     val participants = store.participants
+    val audio = store.audio
+    fun selectAudioDevice(device: AudioDevice?) = store.selectAudioDevice(device)
     val isMuted = store.isMuted
     val isCameraOn = store.isCameraOn
     val liveStreams = store.liveStreams
@@ -96,6 +101,7 @@ fun VoiceCallScreen(
     val context = LocalContext.current
     val state by viewModel.state.collectAsStateWithLifecycle()
     val participants by viewModel.participants.collectAsStateWithLifecycle()
+    val audio by viewModel.audio.collectAsStateWithLifecycle()
     val isMuted by viewModel.isMuted.collectAsStateWithLifecycle()
     val isCameraOn by viewModel.isCameraOn.collectAsStateWithLifecycle()
     val streams by viewModel.liveStreams.collectAsStateWithLifecycle()
@@ -216,6 +222,9 @@ fun VoiceCallScreen(
             }
         }
 
+        if (state != VoiceCallStore.CallState.Idle) {
+            AudioOutputControl(audio, viewModel::selectAudioDevice)
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 12.dp).horizontalScroll(rememberScrollState())) {
             Button(onClick = viewModel::toggleMute) {
                 Icon(if (isMuted) Icons.Default.MicOff else Icons.Default.Mic, contentDescription = "Mute")
@@ -277,6 +286,29 @@ private fun ParticipantTile(p: CallParticipant) {
                         modifier = Modifier.padding(top = 2.dp),
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun AudioOutputControl(audio: CallAudioState, select: (AudioDevice?) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    if (audio.interrupted) Text("Another app has interrupted call audio.", style = MaterialTheme.typography.bodySmall)
+    Box {
+        TextButton(onClick = { expanded = true }, enabled = audio.devices.isNotEmpty()) {
+            Text("Audio: ${audio.selected?.name ?: "Connecting…"}${if (audio.automatic) " (automatic)" else ""}")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("Automatic (headset when available)") },
+                onClick = { select(null); expanded = false },
+            )
+            audio.devices.forEach { device ->
+                DropdownMenuItem(
+                    text = { Text(device.name) },
+                    onClick = { select(device); expanded = false },
+                )
             }
         }
     }

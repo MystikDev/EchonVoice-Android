@@ -28,8 +28,8 @@ android {
         applicationId = "com.echon.voice"
         minSdk = 24
         targetSdk = 36
-        versionCode = 27
-        versionName = "2.0.26"
+        versionCode = 28
+        versionName = "2.0.27"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -141,6 +141,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
 
+    // Read-only migration of sessions saved by <= 2.0.26. New writes use Android Keystore.
     implementation(libs.androidx.security.crypto)
 
     // Firebase Cloud Messaging for push (message/DM) notifications.
@@ -151,16 +152,6 @@ dependencies {
     "directImplementation"(libs.androidx.work.runtime.ktx)
 
     implementation(libs.livekit.android)
-
-    // CVE-2024-7254 (GHSA-735f-pc8j-v9w8): protobuf-javalite < 3.25.5 has a
-    // parser DoS via deeply nested fields. LiveKit (still true of 2.27.0)
-    // transitively declares 3.22.0; force it up to a patched release. Keep this
-    // until a LiveKit release ships a safe protobuf on its own.
-    constraints {
-        implementation("com.google.protobuf:protobuf-javalite:3.25.5") {
-            because("CVE-2024-7254: patch the transitive protobuf-javalite DoS")
-        }
-    }
 
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
