@@ -65,6 +65,14 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      # Keep CPU-intensive compilation separate from the emulator's first boot
+      # and package installation, especially on the newer Android 17 image.
+      - name: Build device test and release APKs
+        run: >-
+          ./gradlew :app:assemble${{ matrix.flavor }}Debug
+          :app:assemble${{ matrix.flavor }}DebugAndroidTest
+          :app:assemble${{ matrix.flavor }}Release
+          -Pechon.disableFirebase=true
       - name: Run instrumentation on actual page-size environment
         uses: reactivecircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
         with:
@@ -73,13 +81,14 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disk-size: 6G
+          ram-size: ${{ matrix.api == '37.0' && '3072M' || '' }}
+          heap-size: ${{ matrix.api == '37.0' && '512M' || '' }}
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: |
             adb shell df -h /data
             if [ '${{ matrix.api }}' != '24' ]; then test "$(adb shell getconf PAGE_SIZE | tr -d '\r')" = "${{ matrix.pages }}"; fi
-            ./gradlew :app:connected${{ matrix.flavor }}DebugAndroidTest -Pechon.disableFirebase=true
-            ./gradlew :app:assemble${{ matrix.flavor }}Release -Pechon.disableFirebase=true
+            ./gradlew :app:connected${{ matrix.flavor }}DebugAndroidTest -Pechon.disableFirebase=true || { adb logcat -d -b crash; adb shell free -m; exit 1; }
             keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/echon-startup.jks" -storepass android -keypass android -alias startup -keyalg RSA -keysize 2048 -validity 2 -dname 'CN=Echon CI'
             flavor=$(echo '${{ matrix.flavor }}' | tr '[:upper:]' '[:lower:]'); "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --ks "$RUNNER_TEMP/echon-startup.jks" --ks-pass pass:android --key-pass pass:android --out "$RUNNER_TEMP/echon-startup.apk" "app/build/outputs/apk/$flavor/release/app-$flavor-release-unsigned.apk"
             bash scripts/check-release-startup.sh "$RUNNER_TEMP/echon-startup.apk"
