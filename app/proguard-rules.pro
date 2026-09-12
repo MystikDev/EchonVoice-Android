@@ -32,3 +32,7 @@
 # WorkManager instantiates the worker reflectively via its (Context, WorkerParameters)
 # constructor; keep it so R8 can't strip the constructor in release.
 -keep class com.echon.voice.core.update.UpdateWorker { <init>(...); }
+
+# Room opens WorkManager's generated database through reflection. Explicitly keep
+# its no-argument constructor: keeping only the class is insufficient with AGP 9.
+-keepclassmembers class androidx.work.impl.WorkDatabase_Impl { public <init>(); }

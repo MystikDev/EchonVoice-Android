@@ -17,6 +17,7 @@ storage migrations remain separate changes with their own acceptance testing.
 | Compose BOM | 2024.10.01 | 2026.06.01 |
 | Core / Lifecycle / Activity | 1.13.1 / 2.8.7 / 1.9.3 | 1.17.0 / 2.10.0 / 1.12.4 |
 | Navigation / Coroutines | 2.8.4 / 1.9.0 | 2.9.8 / 1.10.2 |
+| WorkManager | 2.9.1 | 2.11.2 |
 | Compile / target / minimum API | 35 / 35 / 24 | 37.0 / 36 / 24 |
 
 These are coordinated stable versions, not a claim that every dependency is the
@@ -32,9 +33,20 @@ targeting API 36 opts into Android 16 behavior. Targeting API 37 is a later beha
 migration, especially for background audio. Compilation alone does not establish
 call reliability, device compatibility, or Play acceptance.
 
+The API 36 behavior review found that the host already enables edge-to-edge,
+navigation uses AndroidX Compose rather than legacy back-key interception, and
+the manifest imposes no orientation/aspect-ratio restrictions. The upgraded
+Activity and Navigation libraries retain supported back handling. Physical
+Bluetooth routing and real background call acceptance remain outstanding.
+
 The newer lint checks exposed a missing runtime notification-permission check in
 the Direct updater. Notification posting now checks the permission and handles
 revocation between checking and posting. The in-app update prompt remains usable.
+
+Signed startup testing also reproduced a crash when Room reflectively created
+WorkManager's database after R8 removed its no-argument constructor. The database
+constructor is now kept explicitly, and WorkManager uses its stable 2.11.2 release
+with newer Room dependencies and background-network fixes.
 
 ## Publication gates
 
@@ -44,20 +56,33 @@ used for main/PR checks. Signing and publication depend on both succeeding:
 - Both Direct and Play unit suites, Android lint, and minified release builds.
 - Instrumentation on API 24, 35, 36, and 37.0; both variants on API 36, plus a
   dedicated API 36 environment with an asserted 16 KiB memory page size.
+- Minified-release startup on every matrix device, signed with a disposable test
+  key. The gate waits for a live process and the actual Echon login screen.
 - OSV scanning of the resolved Direct release runtime dependency graph. Findings
   and scanner failures block publication.
 - Signature, 16 KiB ZIP alignment, package name, and tag/version checks on the
   signed APK before publication; existing provenance and manifest hashing remain.
 
 Validation jobs do not receive signing secrets and deliberately disable Firebase.
+Each job explicitly installs the SDK and pinned command-line tools; it does not
+depend on the tools being present on a GitHub runner's PATH.
 The final release uses the configured Firebase secret. Emulator tests exercise
 the production presence UI/store and LiveKit renderer, including rotation and
 disposal; they do not authenticate users or transmit a live call.
 
 ## Validation record
 
-Release validation is in progress. Final results and public-artifact verification
-will be recorded here after the checks complete.
+Local unit validation passed: Direct 54 passed / 1 optional login skipped; Play
+42 passed / 1 optional login skipped. Lint has zero errors (48 Direct and 49 Play
+warnings, chiefly dependency updates and style/resource suggestions).
+
+Both instrumentation tests passed in each variant on an ARM64 API 36 emulator
+whose reported memory page size was 16384 bytes. This exercises real native
+LiveKit renderer creation/disposal, orientation, and presence UI reconciliation.
+
+Signed-release, API 37, CI matrix, and public-artifact validation are in progress.
+The startup gate was checked against the pre-fix APK and correctly rejected its
+database initialization crash. Final dependency-update validation follows below.
 
 ## Subsequent work
 
@@ -72,6 +97,8 @@ will be recorded here after the checks complete.
 
 - [AGP compatibility](https://developer.android.com/build/releases/agp-9-1-0-release-notes)
 - [Built-in Kotlin migration](https://developer.android.com/build/migrate-to-built-in-kotlin)
+- [Android 16 target behavior changes](https://developer.android.com/about/versions/16/behavior-changes-16)
 - [Hilt releases](https://github.com/google/dagger/releases)
+- [WorkManager release notes](https://developer.android.com/jetpack/androidx/releases/work)
 - [Android 17 background audio](https://developer.android.com/about/versions/17/changes/bg-audio)
 - [AndroidX Security release notes](https://developer.android.com/jetpack/androidx/releases/security)
