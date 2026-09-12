@@ -1,9 +1,9 @@
 {
-  "version_code": 26,
-  "version_name": "2.0.25",
+  "version_code": 27,
+  "version_name": "2.0.26",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Improved compatibility with newer Android versions, refreshed app foundations, and more reliable background updating. Includes expanded release checks across supported Android versions and fixes for notification permission handling.",
-  "sha256": "23ba4caecf9ad123269aea1b8dc2f455215c95d9a672d84b30d9979e7ad5e213"
+  "sha256": "8337c9abf1d5ae6538f6c90a4f61f9c5bbed70e2a94f7f552dc03df2ef744daa"
 }
