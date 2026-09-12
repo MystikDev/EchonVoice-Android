@@ -68,10 +68,10 @@ Each job explicitly installs the SDK and pinned command-line tools; it does not
 depend on the tools being present on a GitHub runner's PATH.
 Emulators use the supported software graphics backend and wait for a stable,
 unlocked user before tests. API 37 receives 4 GiB RAM. Its x86_64 image currently
-crashes SurfaceFlinger when the host advertises ReadColorBufferDMA, so that
-optional transport is disabled with `-feature -GLDirectMem` for API 37 only.
-The upstream host enables this extension when both GLDirectMem and the shared-slot
-allocator are enabled; the image's mapper asserts that it is absent. SystemUI,
+crashes SurfaceFlinger when the host lacks ReadColorBufferDMA, so the required
+transport is enabled with `-feature GLDirectMem,HasSharedSlotsHostMemoryAllocator`
+for API 37 only. The upstream host enables this extension when both features are
+enabled; the image's mapper aborts if it is absent. SystemUI,
 the app's graphics rendering, and all test assertions remain enabled.
 The final release uses the configured Firebase secret. Emulator tests exercise
 the production presence UI/store and LiveKit renderer, including rotation and

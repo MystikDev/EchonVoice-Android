@@ -84,10 +84,10 @@ jobs:
           ram-size: ${{ matrix.api == '37.0' && '4096M' || '' }}
           heap-size: ${{ matrix.api == '37.0' && '512M' || '' }}
           disable-animations: true
-          # API 37's ranchu mapper rejects the host's ReadColorBufferDMA extension.
-          # Disable that optional transport via GLDirectMem on this image only;
+          # API 37's ranchu mapper requires the host's ReadColorBufferDMA extension.
+          # Explicitly enable both features that advertise it on this image;
           # keep SystemUI and every app test enabled. See FOUNDATION_UPGRADE.md.
-          emulator-options: -no-window -gpu software -noaudio -no-boot-anim -no-snapshot ${{ matrix.api == '37.0' && '-feature -GLDirectMem' || '' }}
+          emulator-options: -no-window -gpu software -noaudio -no-boot-anim -no-snapshot ${{ matrix.api == '37.0' && '-feature GLDirectMem,HasSharedSlotsHostMemoryAllocator' || '' }}
           script: |
             bash scripts/wait-for-test-device.sh
             adb shell df -h /data
