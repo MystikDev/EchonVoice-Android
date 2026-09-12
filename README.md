@@ -22,8 +22,9 @@ Single `:app` module, package-by-feature under `com.echon.voice`:
 - `feature/*` — auth, moderation, servers, chat, dms, voice, friends, profiles, members, settings, invites
 
 ## Build
-Requires JDK 17 and the Android SDK (platform 35, build-tools 35). `local.properties`
-points `sdk.dir` at the SDK.
+Requires JDK 17 and the Android SDK (platform `android-37.0`, build-tools 36.0.0).
+`local.properties` points `sdk.dir` at the SDK. The app targets Android 16 (API 36)
+and continues to support Android 7.0 (API 24) and later.
 
 ```sh
 export JAVA_HOME=/opt/homebrew/opt/openjdk@17
@@ -50,3 +51,6 @@ validation evidence, Android 17 migration considerations, and the remaining live
 audio/device acceptance checks. Debug verification can use
 `-Pechon.disableFirebase=true` when the local Firebase configuration has only a
 release package client; normal release builds keep Firebase enabled.
+
+[Foundation upgrade](FOUNDATION_UPGRADE.md) records the 2.0.26 toolchain migration,
+required release checks, and remaining calling/storage work.

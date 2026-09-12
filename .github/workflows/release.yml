@@ -23,7 +23,17 @@ permissions:
   attestations: write
 
 jobs:
+  validation:
+    uses: ./.github/workflows/validation.yml
+    permissions:
+      contents: read
+  security:
+    uses: ./.github/workflows/security-scan.yml
+    permissions:
+      contents: read
   release:
+    needs: [validation, security]
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     environment: release
     steps:
@@ -45,6 +55,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+
+      - name: Install compile SDK
+        run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
 
       - name: Restore signing keystore
         env:
@@ -78,8 +91,20 @@ jobs:
       - name: Build signed release APK (direct-download flavor)
         run: ./gradlew :app:assembleDirectRelease
 
-      - name: Stage APK with stable name
-        run: cp app/build/outputs/apk/direct/release/app-direct-release.apk echon-release.apk
+      - name: Stage and verify signed APK
+        run: |
+          cp app/build/outputs/apk/direct/release/app-direct-release.apk echon-release.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify echon-release.apk
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 echon-release.apk
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging echon-release.apk > apk-badging.txt
+          python3 - "$GITHUB_REF_NAME" <<'PYVERIFY'
+          import re, sys
+          package = open("apk-badging.txt").readline()
+          name = re.search(r"name='([^']+)'", package).group(1)
+          version = re.search(r"versionName='([^']+)'", package).group(1)
+          if name != "com.echon.voice" or sys.argv[1] != "v" + version:
+              raise SystemExit("APK package/version does not match the release tag")
+          PYVERIFY
 
       # Delete signing material immediately after the build so no later step or
       # (compromised) action can read the key.

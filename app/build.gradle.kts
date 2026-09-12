@@ -2,7 +2,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
@@ -23,14 +22,14 @@ if (project.file("google-services.json").exists() &&
 
 android {
     namespace = "com.echon.voice"
-    compileSdk = 35
+    compileSdk { version = release(37) }
 
     defaultConfig {
         applicationId = "com.echon.voice"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 26
-        versionName = "2.0.25"
+        targetSdk = 36
+        versionCode = 27
+        versionName = "2.0.26"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -93,9 +92,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     buildFeatures {
         compose = true
         buildConfig = true
@@ -104,6 +100,12 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -129,7 +131,7 @@ dependencies {
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
-    implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.hilt.viewmodel.compose)
 
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)

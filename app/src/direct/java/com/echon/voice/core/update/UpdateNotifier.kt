@@ -1,5 +1,8 @@
 package com.echon.voice.core.update
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -26,6 +29,9 @@ object UpdateNotifier {
 
     fun notifyUpdateAvailable(context: Context, versionName: String?) {
         ensureChannel(context)
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
 
         val launch = Intent(context, MainActivity::class.java)
@@ -47,7 +53,12 @@ object UpdateNotifier {
             .setContentIntent(pending)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        } catch (_: SecurityException) {
+            // Notification permission can be revoked after the check. The in-app
+            // update prompt remains available even when the notification is denied.
+        }
     }
 
     fun cancel(context: Context) =

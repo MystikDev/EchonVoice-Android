@@ -1,6 +1,13 @@
+// AGP supplies Android Kotlin integration; pin its compiler to the same version
+// as Compose and serialization instead of applying the legacy Kotlin Android plugin.
+buildscript {
+    dependencies {
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${libs.versions.kotlin.get()}")
+    }
+}
+
 plugins {
     alias(libs.plugins.android.application) apply false
-    alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.ksp) apply false
