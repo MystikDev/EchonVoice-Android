@@ -72,9 +72,11 @@ jobs:
           target: ${{ matrix.target }}
           arch: x86_64
           profile: pixel_2
+          disk-size: 6G
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: |
+            adb shell df -h /data
             if [ '${{ matrix.api }}' != '24' ]; then test "$(adb shell getconf PAGE_SIZE | tr -d '\r')" = "${{ matrix.pages }}"; fi
             ./gradlew :app:connected${{ matrix.flavor }}DebugAndroidTest -Pechon.disableFirebase=true
             ./gradlew :app:assemble${{ matrix.flavor }}Release -Pechon.disableFirebase=true
