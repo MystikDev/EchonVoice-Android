@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run only on a dedicated test emulator with no signed-in Echon account.
-# The caller supplies a signed, minified release APK (CI uses its debug key).
+# The caller supplies a signed, minified release APK (CI uses a disposable key).
 set -euo pipefail
 
 apk=${1:?Usage: check-release-startup.sh signed-release.apk}

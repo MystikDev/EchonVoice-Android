@@ -4,8 +4,8 @@
 - [x] Migrate the coordinated AGP/Gradle/Kotlin/Hilt/Compose toolchain and target API 36.
 - [x] Require unit, lint, emulator, and dependency-security checks before release signing.
 - [x] Correct updater notification permission handling exposed by upgraded lint.
-- [ ] Validate both flavors, Android 16 with 16 KiB pages, Android 17, and signed startup.
-- [ ] Publish 2.0.26 and verify website APK, manifest, signer, and provenance.
+- [x] Validate both flavors, Android 16 with 16 KiB pages, Android 17, and signed startup.
+- [x] Publish 2.0.26 and verify website APK, manifest, signer, and provenance.
 - [ ] Follow-up: separate LiveKit and encrypted-storage migrations with device acceptance.
 
 ## Presence correction — 2.0.25

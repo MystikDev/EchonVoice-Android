@@ -97,8 +97,22 @@ not establish preservation of an authenticated session.
 
 The final dependency scan resolved 198 runtime Maven packages and reported no
 known issues. Both signed variants pass 16 KiB ZIP alignment; the Direct signing
-certificate is unchanged. The CI matrix and public-artifact verification remain
-pending until publication.
+certificate is unchanged.
+
+The complete [pre-release CI run](https://github.com/MystikDev/EchonVoice-Android/actions/runs/34701453983)
+passed on the release commit: both unit/lint/release-build variants, 12 UI test
+executions across six emulator configurations, and six minified-release startup
+checks. The matching [dependency scan](https://github.com/MystikDev/EchonVoice-Android/actions/runs/34701453969)
+also passed. The [tagged release workflow](https://github.com/MystikDev/EchonVoice-Android/actions/runs/34702159549)
+reran every gate successfully before signing and publishing
+[v2.0.26](https://github.com/MystikDev/EchonVoice-Android/releases/tag/v2.0.26).
+
+The APK downloaded through the website's stable link reports version 2.0.26,
+build 27, package `com.echon.voice`, minimum API 24, and target API 36. Its SHA-256
+matches the public updater manifest and GitHub release asset. Signature continuity,
+16 KiB ZIP alignment, and the GitHub provenance statement's release commit were
+verified. The production build restored Firebase configuration. The complete
+public verification record is [distribution/verification-2.0.26.json](distribution/verification-2.0.26.json).
 
 ## Subsequent work
 
