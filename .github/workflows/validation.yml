@@ -81,12 +81,13 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disk-size: 6G
-          ram-size: ${{ matrix.api == '37.0' && '3072M' || '' }}
+          ram-size: ${{ matrix.api == '37.0' && '4096M' || '' }}
           heap-size: ${{ matrix.api == '37.0' && '512M' || '' }}
           disable-animations: true
-          # Use the supported software backend; swiftshader_indirect is deprecated
-          # and crashes SurfaceFlinger on the Android 17 x86_64 image.
-          emulator-options: -no-window -gpu software -noaudio -no-boot-anim -no-snapshot
+          # API 37's ranchu mapper rejects the host's ReadColorBufferDMA extension.
+          # Disable that optional transport via GLDirectMem on this image only;
+          # keep SystemUI and every app test enabled. See FOUNDATION_UPGRADE.md.
+          emulator-options: -no-window -gpu software -noaudio -no-boot-anim -no-snapshot ${{ matrix.api == '37.0' && '-feature -GLDirectMem' || '' }}
           script: |
             bash scripts/wait-for-test-device.sh
             adb shell df -h /data

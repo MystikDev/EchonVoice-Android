@@ -66,6 +66,13 @@ used for main/PR checks. Signing and publication depend on both succeeding:
 Validation jobs do not receive signing secrets and deliberately disable Firebase.
 Each job explicitly installs the SDK and pinned command-line tools; it does not
 depend on the tools being present on a GitHub runner's PATH.
+Emulators use the supported software graphics backend and wait for a stable,
+unlocked user before tests. API 37 receives 4 GiB RAM. Its x86_64 image currently
+crashes SurfaceFlinger when the host advertises ReadColorBufferDMA, so that
+optional transport is disabled with `-feature -GLDirectMem` for API 37 only.
+The upstream host enables this extension when both GLDirectMem and the shared-slot
+allocator are enabled; the image's mapper asserts that it is absent. SystemUI,
+the app's graphics rendering, and all test assertions remain enabled.
 The final release uses the configured Firebase secret. Emulator tests exercise
 the production presence UI/store and LiveKit renderer, including rotation and
 disposal; they do not authenticate users or transmit a live call.
@@ -110,3 +117,5 @@ pending until publication.
 - [WorkManager release notes](https://developer.android.com/jetpack/androidx/releases/work)
 - [Android 17 background audio](https://developer.android.com/about/versions/17/changes/bg-audio)
 - [AndroidX Security release notes](https://developer.android.com/jetpack/androidx/releases/security)
+- [Emulator requirements and release notes](https://developer.android.com/studio/releases/emulator)
+- [Graphics feature advertisement in the upstream emulator](https://android.googlesource.com/platform/hardware/google/gfxstream/+/refs/heads/main/host/RenderControl.cpp)
