@@ -73,16 +73,24 @@ disposal; they do not authenticate users or transmit a live call.
 ## Validation record
 
 Local unit validation passed: Direct 54 passed / 1 optional login skipped; Play
-42 passed / 1 optional login skipped. Lint has zero errors (48 Direct and 49 Play
+42 passed / 1 optional login skipped. Lint has zero errors (47 Direct and 49 Play
 warnings, chiefly dependency updates and style/resource suggestions).
 
 Both instrumentation tests passed in each variant on an ARM64 API 36 emulator
 whose reported memory page size was 16384 bytes. This exercises real native
 LiveKit renderer creation/disposal, orientation, and presence UI reconciliation.
 
-Signed-release, API 37, CI matrix, and public-artifact validation are in progress.
 The startup gate was checked against the pre-fix APK and correctly rejected its
-database initialization crash. Final dependency-update validation follows below.
+database initialization crash. Both corrected signed release variants then passed
+the gate on API 37. The Direct 2.0.25 public APK was installed on API 36 with 16 KiB
+pages and upgraded to signed 2.0.26 without clearing data; startup passed and the
+background updater job remained registered. This signed-out upgrade check does
+not establish preservation of an authenticated session.
+
+The final dependency scan resolved 198 runtime Maven packages and reported no
+known issues. Both signed variants pass 16 KiB ZIP alignment; the Direct signing
+certificate is unchanged. The CI matrix and public-artifact verification remain
+pending until publication.
 
 ## Subsequent work
 

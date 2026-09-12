@@ -4,6 +4,6 @@
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Fixes server member online/offline status and population counts. Presence now loads when you connect, updates live, and recovers after reconnecting. Idle and Do Not Disturb display correctly. Improved connection heartbeat and background recovery.",
+  "notes": "Improved compatibility with newer Android versions, refreshed app foundations, and more reliable background updating. Includes expanded release checks across supported Android versions and fixes for notification permission handling.",
   "sha256": "23ba4caecf9ad123269aea1b8dc2f455215c95d9a672d84b30d9979e7ad5e213"
 }

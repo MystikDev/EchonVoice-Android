@@ -3,7 +3,8 @@ name: Release APK
 # Builds the signed release APK and publishes it as a GitHub Release whenever a
 # v* tag is pushed. To cut a release: bump versionCode/versionName in
 # app/build.gradle.kts (and edit distribution/latest.json "notes"), commit, then
-#   git tag vX.Y.Z && git push origin main --tags
+#   git push origin main  # wait for validation, then:
+#   git tag vX.Y.Z && git push origin vX.Y.Z
 # CI derives version_code/version_name/sha256 from the built APK and commits them
 # into distribution/latest.json, so the manifest can never drift from the artifact.
 #

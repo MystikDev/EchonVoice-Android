@@ -22,9 +22,11 @@ The repo slug is set in two places (update both if it changes): `distribution/la
 ### Cutting a release (tag-and-forget)
 1. Bump `versionCode` + `versionName` in `app/build.gradle.kts`; optionally edit the
    `notes` in `distribution/latest.json`. Commit.
-2. `git tag vX.Y.Z && git push origin main --tags`.
-3. The `Release APK` GitHub Action (`.github/workflows/release.yml`) builds the signed
-   APK, publishes it as `echon-release.apk`, and **derives `version_code`/`version_name`/
+2. Push main, wait for Android validation and the dependency security scan to pass,
+   then tag that commit: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+3. The `Release APK` GitHub Action (`.github/workflows/release.yml`) reruns the required
+   tests, lint, emulator release-startup checks, and security scan before signing.
+   It publishes the APK as `echon-release.apk` and **derives `version_code`/`version_name`/
    `sha256` from the built APK and commits them into `latest.json`** — so the manifest
    can't drift from the artifact. Existing installs detect the new `versionCode`, verify
    the hash, and update.
@@ -34,8 +36,8 @@ The Action is **active**. Its four signing secrets are configured in the repo
 `ECHON_KEYSTORE_PASSWORD`, `ECHON_KEY_ALIAS`, `ECHON_KEY_PASSWORD`. Rotate these if the
 release key ever changes.
 
-> Manual fallback (no CI) still works: build the signed APK, `shasum -a 256` it into
-> `latest.json`, commit, then `gh release create vX.Y.Z echon-release.apk`.
+Do not bypass failed release gates with a manual APK upload. Resolve the failure
+and rerun validation; verify the public APK and manifest after publication.
 
 ### Integrity
 The APK and manifest are fetched over standard HTTPS (GitHub host), not the
