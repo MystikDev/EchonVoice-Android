@@ -1,9 +1,9 @@
 {
-  "version_code": 27,
-  "version_name": "2.0.26",
+  "version_code": 28,
+  "version_name": "2.0.27",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Updated LiveKit audio engine, added audio output selection and interruption notices, and migrated saved sign-in to atomic Android Keystore encryption with safe recovery.",
-  "sha256": "8337c9abf1d5ae6538f6c90a4f61f9c5bbed70e2a94f7f552dc03df2ef744daa"
+  "sha256": "be753a693c858b44efc09a6ed54ef230a1c4da7222f814421b7272c7cfce5e66"
 }
