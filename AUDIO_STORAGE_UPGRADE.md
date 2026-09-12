@@ -84,7 +84,7 @@ Sources reviewed:
 - Instrumentation uses real Android Keystore and legacy encrypted keysets with
   isolated test aliases. It checks migration, reopening, rotation, logout,
   tampering, incomplete legacy keysets, and missing-key behavior without reading production credentials.
-- Audio instrumentation selects speaker and earpiece, returns to automatic,
+- Audio instrumentation selects available emulated outputs, returns to automatic,
   and repeats three call lifetimes with the real SDK routing handler.
 - Existing presence and fullscreen/rotation/renderer-disposal tests remain gates.
 - Local Android 16 ARM64 emulator: verified 16,384-byte pages; all six
@@ -111,3 +111,20 @@ Automatic, incoming phone-call interruptions, and Wi-Fi/cellular handover under
 weak reception. Verify recovery after reconnect and leave/rejoin. Emulator route
 selection does not certify acoustic quality, headset microphones, packet-loss
 recovery, or production-server behavior. No physical acceptance has been claimed.
+
+## Release-check infrastructure
+
+The first complete audio/storage candidate passed all six CI configurations.
+On the final auth candidate, all 36 app instrumentation executions also passed,
+but the API 24 startup check stalled during ADB installation and the API 35
+startup check did not observe the login screen after an incremental install;
+that emulator also reported a graphics-buffer error. No app crash was captured.
+The stalled run was cancelled to retrieve its logs. These observations do not
+establish a production app defect or prove one specific emulator cause.
+
+The startup gate now installs the complete APK with `--no-incremental`, bounds
+ADB operations, removes stale UI dumps, and prints UI/activity/crash diagnostics
+on failure. It still requires both a live process and the actual login screen;
+no app assertion or release gate was removed. The updated gate passes locally
+on the signed release. The final preflight and tag pipeline must pass before
+publication.
