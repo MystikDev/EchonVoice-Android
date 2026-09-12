@@ -67,7 +67,8 @@ Validation jobs do not receive signing secrets and deliberately disable Firebase
 Each job explicitly installs the SDK and pinned command-line tools; it does not
 depend on the tools being present on a GitHub runner's PATH.
 Emulators use the supported software graphics backend and wait for a stable,
-unlocked user before tests. API 37 receives 4 GiB RAM. Its x86_64 image currently
+unlocked user before tests. API 37 and the 16 KiB image receive 4 GiB RAM to avoid
+first-boot memory pressure. The API 37 x86_64 image currently
 crashes SurfaceFlinger when the host lacks ReadColorBufferDMA, so the required
 transport is enabled with `-feature GLDirectMem,HasSharedSlotsHostMemoryAllocator`
 for API 37 only. The upstream host enables this extension when both features are
@@ -119,3 +120,4 @@ pending until publication.
 - [AndroidX Security release notes](https://developer.android.com/jetpack/androidx/releases/security)
 - [Emulator requirements and release notes](https://developer.android.com/studio/releases/emulator)
 - [Graphics feature advertisement in the upstream emulator](https://android.googlesource.com/platform/hardware/google/gfxstream/+/refs/heads/main/host/RenderControl.cpp)
+- [Graphics mapper requirements in the upstream system image](https://android.googlesource.com/device/generic/goldfish/+/refs/heads/main/hals/gralloc/mapper.cpp)
