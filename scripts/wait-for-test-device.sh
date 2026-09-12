@@ -6,11 +6,18 @@ set -euo pipefail
 # This does not retry failing app tests or weaken the app's credential protection.
 last_compositor=""
 stable_samples=0
+# Android 7 dumps user state numerically (RUNNING_UNLOCKED = 3); newer
+# releases include the named state. These are fresh, single-user test devices.
+api=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
+unlocked_pattern='State: RUNNING_UNLOCKED'
+if [[ "$api" == "24" ]]; then
+  unlocked_pattern='Started users state: {0=3}'
+fi
 for ((attempt = 0; attempt < 36; attempt++)); do
   compositor=$(adb shell pidof surfaceflinger 2>/dev/null | tr -d '\r' || true)
   if [[ -n "$compositor" ]] &&
       [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]] &&
-      adb shell dumpsys user 2>/dev/null | grep -q 'State: RUNNING_UNLOCKED'; then
+      adb shell dumpsys user 2>/dev/null | grep -Fq "$unlocked_pattern"; then
     if [[ "$compositor" == "$last_compositor" ]]; then
       stable_samples=$((stable_samples + 1))
     else
