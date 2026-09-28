@@ -19,9 +19,12 @@ Messages, ongoing calls, and updater notifications use a transparent monochrome
 bell instead of adaptive launcher artwork, preventing the solid-square small-icon
 appearance. The same icon is configured as Firebase's notification fallback.
 
-The reported phrase “blocked by browser settings” does not exist in this native
-Kotlin app. It may refer to Chrome, a PWA, or the obsolete WebView wrapper; the
-reporter's app/version has not been confirmed. This release cannot grant browser
+The reported phrase “Blocked — enable in browser settings” was found in the
+current public web client (`/assets/index-ChNjkP4V.js`, inspected September 28).
+It does not exist in this native Kotlin app. The website's Android APK link points
+to the correct native GitHub release, although its static version label is stale.
+The reporter's installed app/version has not been confirmed; Chrome, a PWA, or the
+obsolete WebView wrapper may be involved. This release cannot grant browser
 permissions or prove that a separate browser installation was repaired.
 
 ## Multiline messages
@@ -70,5 +73,12 @@ skips, zero lint errors (45/46 warnings), both minified release variants built,
 and all ten tests passed on the dedicated Android 15 ARM64 emulator. An overlapping
 local debug-package build failed once; rerunning after the release builds completed
 passed. No assertion or release gate was removed.
+
+The first CI attempt exposed two test-harness issues on Android 7: optional
+screenshot capture used a PixelCopy method introduced after API 24, and the icon
+test read active notifications immediately after asynchronous posting. Removed
+only the diagnostic screenshot (already visually inspected locally) and added a
+bounded wait for the posted alert. All ten device tests and their functional assertions
+remain, with no skipped OS configurations. The corrected local device suite passed.
 
 Release execution and public-artifact verification are recorded below once complete.

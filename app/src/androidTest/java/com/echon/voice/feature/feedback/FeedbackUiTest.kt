@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asAndroidBitmap
 import com.echon.voice.core.push.PushRegistrationStatus
 import com.echon.voice.feature.settings.NotificationSettings
 import androidx.compose.material3.MaterialTheme
@@ -87,11 +86,6 @@ class FeedbackUiTest {
         compose.onNodeWithText("Notifications").assertIsDisplayed()
         compose.onNodeWithText("Couldn't connect message notifications. Check your connection and retry.").assertIsDisplayed()
         compose.onNodeWithText("Open Android notification settings").assertIsDisplayed()
-        compose.onRoot().captureToImage().asAndroidBitmap().let { bitmap ->
-            java.io.File(compose.activity.externalCacheDir, "feedback-notifications.png").outputStream().use {
-                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
-            }
-        }
         compose.onNodeWithText("Retry push registration").performClick()
         compose.runOnIdle { assertTrue(retried) }
         compose.onNodeWithText("Connecting message notifications…").assertIsDisplayed()
@@ -111,6 +105,7 @@ class FeedbackUiTest {
         try {
             assertTrue(MessageNotifier.canPostNotifications(context))
             MessageNotifier.notify(context, null, null, null, "Echon test", "First\n\nSecond")
+            compose.waitUntil(timeoutMillis = 5_000) { manager.activeNotifications.any { it.id == 0 } }
             val posted = manager.activeNotifications.single { it.id == 0 }.notification
             assertEquals(R.drawable.ic_notification, posted.smallIcon.resId)
             assertEquals("First\n\nSecond", posted.extras.getCharSequence("android.text").toString())
