@@ -1,9 +1,9 @@
 {
-  "version_code": 28,
-  "version_name": "2.0.27",
+  "version_code": 29,
+  "version_name": "2.0.28",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Fixed Android notification icons and added permission/status recovery, improved invite creation and sharing, and preserved multiline message formatting.",
-  "sha256": "be753a693c858b44efc09a6ed54ef230a1c4da7222f814421b7272c7cfce5e66"
+  "sha256": "93df66b377fe97a4ddfc09c4346401ba291e6a2d2e10e3e6fe2f34a196276ad6"
 }
