@@ -87,14 +87,14 @@ class MessageStore(
         replyToId: String? = null,
         attachments: List<OutgoingAttachment>? = null,
     ) {
-        val trimmed = content.trim()
-        if (trimmed.isEmpty() && attachments.isNullOrEmpty()) return
+        val text = normalizeMessageText(content)
+        if (text.isBlank() && attachments.isNullOrEmpty()) return
 
         val localId = "local-${UUID.randomUUID()}"
         val echo = Message(
             id = localId,
             channelId = channelId,
-            content = trimmed,
+            content = text,
             author = author,
             replyToId = replyToId,
             createdAt = Instant.now().toString(),
@@ -107,9 +107,9 @@ class MessageStore(
 
         try {
             val sent = if (kind == ChatChannelKind.DM) {
-                apiCall { api.sendDmMessage(channelId, SendMessageRequest(trimmed, replyToId, attachments)) }
+                apiCall { api.sendDmMessage(channelId, SendMessageRequest(text, replyToId, attachments)) }
             } else {
-                apiCall { api.sendChannelMessage(channelId, SendMessageRequest(trimmed, replyToId, attachments)) }
+                apiCall { api.sendChannelMessage(channelId, SendMessageRequest(text, replyToId, attachments)) }
             }
             _messages.update { list ->
                 val idx = list.indexOfFirst { it.id == localId }
@@ -145,13 +145,13 @@ class MessageStore(
     }
 
     suspend fun edit(messageId: String, content: String) {
-        val trimmed = content.trim()
-        if (trimmed.isEmpty()) return
+        val text = normalizeMessageText(content)
+        if (text.isBlank()) return
         val previous = _messages.value.firstOrNull { it.id == messageId } ?: return
         _messages.update { list ->
-            list.map { if (it.id == messageId) it.copy(content = trimmed, editedAt = Instant.now().toString()) else it }
+            list.map { if (it.id == messageId) it.copy(content = text, editedAt = Instant.now().toString()) else it }
         }
-        runCatching { apiCall { api.editMessage(messageId, com.echon.voice.model.EditMessageRequest(trimmed)) } }
+        runCatching { apiCall { api.editMessage(messageId, com.echon.voice.model.EditMessageRequest(text)) } }
             .onFailure { applyUpdate(previous) }
     }
 

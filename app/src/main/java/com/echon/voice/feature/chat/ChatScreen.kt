@@ -268,7 +268,7 @@ private fun PendingChips(viewModel: ChatViewModel) {
 }
 
 @Composable
-private fun Composer(
+internal fun Composer(
     draft: String,
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
@@ -294,7 +294,8 @@ private fun Composer(
                 onValueChange = onDraftChange,
                 placeholder = { Text("Message #$channelName") },
                 maxLines = 5,
-                keyboardOptions = KeyboardOptions.Default,
+                singleLine = false,
+                keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Default),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,

@@ -51,9 +51,13 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val authStore: AuthStore,
+    private val push: com.echon.voice.core.push.PushTokenRegistrar,
     private val api: EchonApi,
     private val appPreferences: com.echon.voice.core.storage.AppPreferences,
 ) : ViewModel() {
+    val pushStatus = push.status
+    fun retryPush() = push.retry()
+
     val currentUser = authStore.currentUser
 
     val skinEnabled = appPreferences.skinEnabled
@@ -126,6 +130,10 @@ fun SettingsScreen(
             SettingsRow(title = "Change password", onClick = onOpenChangePassword)
             HorizontalDivider()
             SettingsRow(title = "Blocked users", onClick = onOpenBlockedUsers)
+            HorizontalDivider()
+
+            val pushStatus by viewModel.pushStatus.collectAsStateWithLifecycle()
+            NotificationSettings(pushStatus, viewModel::retryPush)
             HorizontalDivider()
 
             AppearanceSection(viewModel)

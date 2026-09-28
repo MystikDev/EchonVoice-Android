@@ -45,7 +45,7 @@ object UpdateNotifier {
         val text = "A new version of Echon" + (versionName?.let { " ($it)" } ?: "") +
             " is ready. Tap to install."
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Update available")
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))

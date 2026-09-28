@@ -1,72 +1,74 @@
 package com.echon.voice.core.push
 
-import android.util.Log
 import com.echon.voice.core.di.ApplicationScope
-import com.echon.voice.core.network.ApiException
 import com.echon.voice.core.network.EchonApi
 import com.echon.voice.core.network.apiCall
 import com.echon.voice.feature.auth.AuthStore
 import com.echon.voice.model.RegisterDeviceRequest
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Registers this install's FCM token with the backend so it can receive push
- * notifications. The token is user-scoped, so registration only happens while
- * signed in: on each sign-in we fetch the current token and POST it, and
- * [onTokenRefreshed] re-registers when FCM rotates the token.
- *
- * Degrades gracefully: if Firebase isn't configured (no google-services.json) or
- * the backend `/v1/devices` endpoint isn't live yet, this no-ops without crashing.
- */
+/** Registration failures are visible and retried; account changes cancel pending work. */
 @Singleton
 class PushTokenRegistrar @Inject constructor(
     private val api: EchonApi,
     private val auth: AuthStore,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
-    /** Begin watching auth state; call once from the Application. */
+    private val refresh = MutableStateFlow(0L)
+    private val _status = MutableStateFlow(PushRegistrationStatus.SIGNED_OUT)
+    val status = _status.asStateFlow()
+    private var started = false
+
     fun start() {
+        if (started) return
+        started = true
         scope.launch {
-            auth.phase.collectLatest { phase ->
-                if (phase == AuthStore.Phase.SignedIn) fetchAndRegister()
+            combine(auth.phase, auth.currentUser, refresh) { phase, user, revision ->
+                Triple(phase, user?.id, revision)
+            }.distinctUntilChanged().collectLatest { (phase, userId, _) ->
+                if (phase != AuthStore.Phase.SignedIn || userId == null) {
+                    _status.value = PushRegistrationStatus.SIGNED_OUT
+                    return@collectLatest
+                }
+                val messaging = runCatching { FirebaseMessaging.getInstance() }.getOrNull()
+                if (messaging == null) {
+                    _status.value = PushRegistrationStatus.UNAVAILABLE
+                    return@collectLatest
+                }
+                registerPushWithRetry(
+                    fetchToken = {
+                        suspendCancellableCoroutine { continuation ->
+                            messaging.token.addOnSuccessListener { token ->
+                                if (continuation.isActive) continuation.resume(token)
+                            }.addOnFailureListener { error ->
+                                if (continuation.isActive) continuation.resumeWithException(error)
+                            }
+                        }
+                    },
+                    register = { token -> apiCall { api.registerDevice(RegisterDeviceRequest(token, "android")) } },
+                    stillSignedIn = { auth.phase.value == AuthStore.Phase.SignedIn && auth.currentUser.value?.id == userId },
+                    changed = { _status.value = it },
+                )
             }
         }
     }
 
-    /** Called by [EchonMessagingService.onNewToken] when FCM rotates the token. */
-    fun onTokenRefreshed(token: String) {
-        if (auth.phase.value == AuthStore.Phase.SignedIn) {
-            scope.launch { register(token) }
-        }
-    }
+    /** Retry on foreground return and explicit user request, without logging tokens. */
+    fun retry() { refresh.update { it + 1 } }
 
-    private fun fetchAndRegister() {
-        // getInstance() throws if no default FirebaseApp (Firebase not configured);
-        // swallow so the app runs normally until a Firebase project is set up.
-        runCatching {
-            FirebaseMessaging.getInstance().token
-                .addOnSuccessListener { token -> scope.launch { register(token) } }
-                .addOnFailureListener { Log.w(TAG, "FCM token fetch failed", it) }
-        }.onFailure { Log.i(TAG, "Push disabled (Firebase not configured)") }
-    }
-
-    private suspend fun register(token: String) {
-        try {
-            apiCall { api.registerDevice(RegisterDeviceRequest(deviceToken = token, platform = "android")) }
-            Log.i(TAG, "device token registered")
-        } catch (e: ApiException.Unauthorized) {
-            // Signed out between the check and the call; ignore.
-        } catch (e: Exception) {
-            Log.w(TAG, "device token registration failed", e)
-        }
-    }
-
-    private companion object {
-        const val TAG = "EchonPush"
-    }
+    @Suppress("UNUSED_PARAMETER")
+    fun onTokenRefreshed(token: String) = retry()
 }

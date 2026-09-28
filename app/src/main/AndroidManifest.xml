@@ -82,6 +82,9 @@
             android:name="io.livekit.android.room.track.screencapture.ScreenCaptureService"
             tools:node="remove" />
 
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+
         <!-- Firebase Cloud Messaging: receives push (message/DM) notifications. -->
         <service
             android:name=".core.push.EchonMessagingService"

@@ -189,13 +189,13 @@ interface EchonApi {
     // --- Invites ---
 
     @POST("v1/channels/{id}/invites")
-    suspend fun createInvite(@Path("id") channelId: String): Invite
+    suspend fun createInvite(@Path("id") channelId: String, @Body options: kotlinx.serialization.json.JsonObject = kotlinx.serialization.json.JsonObject(emptyMap())): Invite
 
     @GET("v1/invites/{code}")
     suspend fun previewInvite(@Path("code") code: String): InvitePreview
 
     @POST("v1/invites/{code}/use")
-    suspend fun useInvite(@Path("code") code: String)
+    suspend fun useInvite(@Path("code") code: String, @Body options: kotlinx.serialization.json.JsonObject = kotlinx.serialization.json.JsonObject(emptyMap()))
 
     // --- Members ---
 

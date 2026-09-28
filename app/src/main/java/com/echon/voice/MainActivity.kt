@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
     private val requestNotifications =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* best-effort */ }
 
+    @Inject lateinit var pushRegistrar: com.echon.voice.core.push.PushTokenRegistrar
     @Inject lateinit var deepLinkStore: DeepLinkStore
     @Inject lateinit var appPreferences: AppPreferences
     @Inject lateinit var voiceCalls: VoiceCallStore
@@ -66,6 +67,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        pushRegistrar.retry()
         voiceCalls.setCameraForeground(true)
         backgroundedAt?.let {
             if (android.os.SystemClock.elapsedRealtime() - it > 2_000) realtimeSocket.reconnect()

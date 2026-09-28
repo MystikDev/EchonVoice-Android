@@ -74,7 +74,7 @@ fun ServersScreen(
     val unread by viewModel.unread.collectAsStateWithLifecycle()
 
     var showJoin by remember { mutableStateOf(false) }
-    var inviteChannelId by remember { mutableStateOf<String?>(null) }
+    var inviteServerId by remember { mutableStateOf<String?>(null) }
 
     Row(modifier = Modifier.fillMaxSize()) {
         // Server rail
@@ -109,7 +109,7 @@ fun ServersScreen(
                 item {
                     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text("Members", color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { onOpenMembers(sid) })
-                        Text("Invite", color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { inviteChannelId = text.firstOrNull()?.id })
+                        Text("Invite", color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { inviteServerId = sid })
                     }
                 }
             }
@@ -146,8 +146,8 @@ fun ServersScreen(
     if (showJoin) {
         com.echon.voice.feature.invites.JoinServerSheet(onDismiss = { showJoin = false })
     }
-    inviteChannelId?.let { cid ->
-        com.echon.voice.feature.invites.CreateInviteSheet(channelId = cid, onDismiss = { inviteChannelId = null })
+    inviteServerId?.let { sid ->
+        com.echon.voice.feature.invites.CreateInviteSheet(serverId = sid, channels = channelsByServer[sid].orEmpty(), onDismiss = { inviteServerId = null })
     }
 }
 

@@ -22,7 +22,7 @@ import com.echon.voice.R
  * pushing to a user who has blocked the sender.
  */
 object MessageNotifier {
-    private const val CHANNEL_ID = "echon_messages"
+    const val CHANNEL_ID = "echon_messages"
 
     /** Intent extras [MainActivity] reads to deep-link a notification tap. */
     const val EXTRA_CHANNEL_ID = "echon.notif.channelId"
@@ -59,7 +59,7 @@ object MessageNotifier {
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
@@ -83,17 +83,20 @@ object MessageNotifier {
      * Android 13+ requires the runtime POST_NOTIFICATIONS grant; below that it's
      * install-time. Also honor the user disabling the app's notifications.
      */
-    private fun canPostNotifications(context: Context): Boolean {
+    fun canPostNotifications(context: Context): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) {
             return false
         }
-        return NotificationManagerCompat.from(context).areNotificationsEnabled()
+        return NotificationManagerCompat.from(context).areNotificationsEnabled() &&
+            (Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+                context.getSystemService(NotificationManager::class.java)
+                    .getNotificationChannel(CHANNEL_ID)?.importance != NotificationManager.IMPORTANCE_NONE)
     }
 
-    private fun ensureChannel(context: Context) {
+    fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = context.getSystemService(NotificationManager::class.java)
             if (manager.getNotificationChannel(CHANNEL_ID) == null) {
