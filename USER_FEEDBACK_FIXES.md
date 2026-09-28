@@ -81,4 +81,35 @@ only the diagnostic screenshot (already visually inspected locally) and added a
 bounded wait for the posted alert. All ten device tests and their functional assertions
 remain, with no skipped OS configurations. The corrected local device suite passed.
 
-Release execution and public-artifact verification are recorded below once complete.
+## Published release verification
+
+Published [2.0.28 (29)](https://github.com/MystikDev/EchonVoice-Android/releases/tag/v2.0.28)
+from source `5b162b2da2ed354aaa5206e6ffc925e687e2756a` on September 28, 2026.
+[Pre-release validation](https://github.com/MystikDev/EchonVoice-Android/actions/runs/36441682612)
+and [security scanning](https://github.com/MystikDev/EchonVoice-Android/actions/runs/36441682358)
+passed. The [tagged release workflow](https://github.com/MystikDev/EchonVoice-Android/actions/runs/36443504809)
+completed on attempt 2 with every required job successful: six emulator
+configurations, 60 device-test executions, six minified startup checks, and 198
+runtime dependencies scanned with no reported issues.
+
+The first tagged API 35 run timed out after 15 seconds in the existing audio-routing
+test. All new feedback tests passed. Rerunning the failed job on a fresh runner,
+without changing application code, tests, or gates, passed. The timeout's cause
+was not established; emulator success does not establish physical audio behavior.
+
+Downloaded the public APK through the website's actual stable GitHub download
+link and verified package/version, signing-certificate continuity, GitHub build
+provenance tied to this source and tag, release-asset digest, and the public update
+manifest. Its SHA-256 is
+`93df66b377fe97a4ddfc09c4346401ba291e6a2d2e10e3e6fe2f34a196276ad6`.
+ZIP and all packaged 64-bit native-library load alignments meet 16 KB requirements.
+The bell resource and Firebase fallback metadata are present, and CI restored
+Firebase configuration for the signed production build.
+
+The public APK updated the existing signed-out 2.0.27 installation on the Android
+15 ARM64 emulator without uninstalling or clearing data, preserved its original
+installation time, and reached the login screen. This does not verify an
+authenticated upgrade, real backend push delivery, or production invite redemption.
+Those remain live acceptance checks, along with identifying which client displayed
+the browser-permission warning. Machine-readable evidence is in
+[`distribution/verification-2.0.28.json`](distribution/verification-2.0.28.json).

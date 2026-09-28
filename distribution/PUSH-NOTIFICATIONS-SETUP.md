@@ -38,8 +38,9 @@ That's the only client-side step — the Gradle build auto-detects the file and
 enables FCM.
 
 ## 2. Device-token endpoint (backend)
-The app registers its FCM token (authenticated) whenever the user signs in and
-whenever FCM rotates the token.
+The app registers its FCM token (authenticated) when the user signs in, when FCM
+rotates the token, when returning to the foreground, and when the user retries
+registration in Settings. Registration work is cancelled when the account changes.
 
 ```
 POST /v1/devices
@@ -55,8 +56,10 @@ Backend should:
 - Keep `platform` for future iOS/APNs support.
 - Prune tokens FCM reports as stale (`UNREGISTERED` / `NOT_FOUND` on send).
 
-A `2xx` with any/empty body is fine. (A `4xx/5xx` is tolerated by the client — it
-just logs and retries on next sign-in.)
+A `2xx` with any/empty body is fine. Temporary failures receive up to three
+attempts; permanent `4xx` errors other than `429` stop the current retry cycle.
+Token retrieval has a 20-second timeout per attempt. Settings shows registration
+status and offers retry; returning to the app also retries. Tokens are not logged.
 
 ## 3. Sending a push (backend)
 When a user should be notified (new message in a channel they're in, a DM, or a
@@ -110,11 +113,17 @@ these exact keys so titles/labels/deep-links are correct.
 
 ## What the client already does (implemented)
 - Declares `com.echon.voice.core.push.EchonMessagingService` (`FirebaseMessagingService`).
-- On sign-in and on token rotation, POSTs the token to `/v1/devices` (guarded — no-op
-  if Firebase/endpoint absent).
+- On sign-in, token rotation, foreground return, and explicit retry, POSTs the
+  token to `/v1/devices`. Missing Firebase configuration is shown as unavailable;
+  endpoint failures are shown as registration failures.
 - On a data push, posts a notification on a **"Messages"** channel (importance high),
   respecting the user's notification permission (`POST_NOTIFICATIONS`, already requested).
 - **Tapping** the notification deep-links straight into the channel/DM.
+- Settings separates Android permission/channel status from push registration,
+  links to Android controls, and offers a local test alert. That alert verifies
+  local display only; it does not establish backend push delivery.
+- Messages, calls, and update alerts use a transparent bell small icon. Firebase
+  notification payloads also have the bell configured as their fallback icon.
 
 ## Testing once configured
 1. Drop `google-services.json` into `app/`, build, install, sign in.
