@@ -19,6 +19,9 @@ suspend fun <T> apiCall(block: suspend () -> T): T {
                 EchonJson.decodeFromString(ServerErrorEnvelope.serializer(), it)
             }
         }.getOrNull()
+        if (e.code() == 403 && (envelope?.code == "account_disabled" || envelope?.text == "account_disabled")) {
+            throw ApiException.Unauthorized("This account is unavailable. Please contact support.")
+        }
         if (e.code() == 401) {
             // A login 401 means bad credentials, not an expired session — showing
             // "session expired" on the sign-in screen is badly misleading.

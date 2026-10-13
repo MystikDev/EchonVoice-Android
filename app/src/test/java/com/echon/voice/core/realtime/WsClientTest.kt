@@ -11,6 +11,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.OkHttpClient
 import okhttp3.Response
 import okhttp3.WebSocket
@@ -23,7 +25,9 @@ import java.lang.reflect.Proxy
 
 class WsClientTest {
     @Test fun revokedCloseAndRejectedHandshakeClearSessionAndNeverReconnect() = runBlocking {
-        for (handshakeRejected in listOf(false, true)) {
+        for (mode in listOf("revoked-close", "rejected-handshake", "disabled-account")) {
+            val handshakeRejected = mode == "rejected-handshake"
+            val disabled = mode == "disabled-account"
             val server = MockWebServer()
             if (handshakeRejected) server.enqueue(MockResponse().setResponseCode(401))
             else server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
@@ -35,7 +39,11 @@ class WsClientTest {
             }.build()
             val tickets = java.util.concurrent.atomic.AtomicInteger()
             val api = Proxy.newProxyInstance(EchonApi::class.java.classLoader, arrayOf(EchonApi::class.java)) { _, _, _ ->
-                tickets.incrementAndGet(); TicketResponse("ticket")
+                tickets.incrementAndGet()
+                if (disabled) throw retrofit2.HttpException(retrofit2.Response.error<com.echon.voice.model.TicketResponse>(
+                    403, """{"error":"account_disabled"}""".toResponseBody("application/json".toMediaType()),
+                ))
+                TicketResponse("ticket")
             } as EchonApi
             val storage = object : com.echon.voice.core.storage.TokenStorage {
                 override var accessToken: String? = "access"
@@ -52,7 +60,7 @@ class WsClientTest {
                 withTimeout(5_000) { revoked.await() }
                 assertFalse(session.hasSession); assertNull(storage.accessToken); assertNull(storage.refreshToken)
                 kotlinx.coroutines.delay(5_200) // Longer than the normal reconnect backoff.
-                assertEquals(1, tickets.get()); assertEquals(1, server.requestCount)
+                assertEquals(1, tickets.get()); assertEquals(if (disabled) 0 else 1, server.requestCount)
             } finally {
                 ws.stop(); consumer.cancel(); scope.cancel()
                 client.dispatcher.executorService.shutdown(); client.connectionPool.evictAll(); server.shutdown()

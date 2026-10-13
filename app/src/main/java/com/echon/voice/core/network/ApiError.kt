@@ -27,8 +27,8 @@ sealed class ApiException(message: String?) : Exception(message) {
     }
 
     /** 401 and refresh failed — the session is irrecoverable. */
-    class Unauthorized :
-        ApiException("Your session has expired. Please sign in again.")
+    class Unauthorized(message: String = "Your session has expired. Please sign in again.") :
+        ApiException(message)
 }
 
 /** Server error envelope, e.g. {"error": "Invalid credentials", "code": "invalid_credentials"}. */

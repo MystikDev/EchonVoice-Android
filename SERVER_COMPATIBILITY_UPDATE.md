@@ -23,7 +23,8 @@ alone cannot establish desktop-to-phone media interoperability.
   and redeem remain authenticated REST actions. Normal channel behavior is retained.
 - The chat joins its channel room before emitting typing; revoked rooms suppress
   local typing too.
-- WebSocket close 4001 and an unauthorized ticket/handshake clear the matching
+- WebSocket close 4001, an unauthorized ticket/handshake, and the server's
+  `403 account_disabled` response clear the matching
   session and stop the reconnect loop. The existing auth observer ends audio,
   purges account data, and returns to login. Generation checks protect a later
   login from an older socket. Password reset/revocation follows this same path.
