@@ -1,9 +1,9 @@
 {
-  "version_code": 29,
-  "version_name": "2.0.28",
+  "version_code": 31,
+  "version_name": "2.0.30",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Updated LiveKit, added signup verification and session-revocation handling, fixed private-channel updates, and improved optional screen sharing, share-audio mute, rotation, and launcher artwork.",
-  "sha256": "93df66b377fe97a4ddfc09c4346401ba291e6a2d2e10e3e6fe2f34a196276ad6"
+  "sha256": "5fad128fdfd321cfcf10d12b3b782c7465b2656cb7971f2f80299ce0a26e8826"
 }
