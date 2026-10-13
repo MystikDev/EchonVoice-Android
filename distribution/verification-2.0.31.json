@@ -1,0 +1,75 @@
+{
+  "version_name": "2.0.31",
+  "version_code": 32,
+  "verified_at": "2026-10-13T21:28:48.029250+00:00",
+  "source_commit": "35976fef76f44b9f3c8517372289761b420eaf68",
+  "release_url": "https://github.com/MystikDev/EchonVoice-Android/releases/tag/v2.0.31",
+  "workflow_url": "https://github.com/MystikDev/EchonVoice-Android/actions/runs/38468057332",
+  "release_workflow_attempt": 1,
+  "website_url": "https://echon-voice.com/android.html",
+  "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
+  "sha256": "38f60bfa7637473dd07b5976b5ab4f75a989a46faf8b88d76b89973638a73059",
+  "signer_certificate_sha256": "bdfbbbf992e30b1b5bf07fdcedc09133c1db684623aab457c2ef95ecc5e6b836",
+  "change": "The in-app signed-in header reuses the Android launcher foreground artwork, without theme tint.",
+  "local_debug_build_passed": true,
+  "required_release_jobs_passed": 9,
+  "job_status_source": "GitHub commit check-runs filtered to the tagged release workflow",
+  "emulator_configurations_passed": 6,
+  "emulator_test_executions_passed": 78,
+  "minified_release_startup_checks_passed": 6,
+  "runtime_dependencies_scanned": 201,
+  "firebase_enabled_in_release": true,
+  "signature_continuity_verified": true,
+  "github_asset_digest_verified": true,
+  "public_manifest_hash_verified": true,
+  "github_provenance_and_source_commit_verified": true,
+  "website_download_verified": true,
+  "zip_16kb_alignment_verified": true,
+  "native_64bit_load_alignment_verified": [
+    {
+      "library": "lib/arm64-v8a/libandroidx.graphics.path.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/arm64-v8a/libjnidispatch.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/arm64-v8a/liblivekit_uniffi.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/arm64-v8a/liblkjingle_peerconnection_so.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/mips64/libjnidispatch.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/x86_64/libandroidx.graphics.path.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/x86_64/libjnidispatch.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/x86_64/liblivekit_uniffi.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/x86_64/liblkjingle_peerconnection_so.so",
+      "minimum_load_alignment": 16384
+    }
+  ],
+  "launcher_resources_verified": true,
+  "notification_bell_verified": true,
+  "public_apk_signed_out_upgrade_from": "2.0.30 (31)",
+  "public_apk_in_place_upgrade_verified": true,
+  "original_install_time_preserved": true,
+  "public_apk_startup_verified_locally": true,
+  "physical_device_visual_acceptance_tested": false,
+  "production_signup_and_physical_media_acceptance_tested": false,
+  "streamdeck_work": "User deferred the separate handshake fix to a later PC-side session."
+}
