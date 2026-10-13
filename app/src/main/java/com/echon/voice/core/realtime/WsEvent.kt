@@ -16,6 +16,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * the client — the tolerant-enum discipline carried over from iOS.
  */
 sealed interface WsEvent {
+    data class ChannelAccessChanged(val serverId: String?) : WsEvent
     data class ChannelUpserted(val channel: Channel) : WsEvent
     data class ChannelDeleted(val channelId: String, val serverId: String?) : WsEvent
     data object Ready : WsEvent
@@ -65,6 +66,8 @@ object WsEventParser {
 
         return when (name) {
             "ready" -> WsEvent.Ready
+            "role-created", "role-updated", "role-deleted", "member-roles-changed" ->
+                WsEvent.ChannelAccessChanged(payload(ChannelDeletedPayload.serializer())?.serverId)
             "channel-created", "channel-updated" -> payload(Channel.serializer())
                 ?.takeIf { it.id.isNotBlank() && !it.serverId.isNullOrBlank() }
                 ?.let { WsEvent.ChannelUpserted(it) } ?: WsEvent.Unknown(name)

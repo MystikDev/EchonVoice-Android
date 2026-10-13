@@ -16,6 +16,8 @@ alone cannot establish desktop-to-phone media interoperability.
   and active call for that channel. An open chat exits. Delayed REST results and
   late queued messages cannot repopulate revoked content. Ready and subsequent
   selection reconcile channel access through REST, including changes missed offline.
+  Role and member-role events refresh the affected server too; explicit revocations
+  purge immediately even if permission state changes again before UI collection.
 - Filtered voice snapshots replace occupancy rather than treating hidden rooms as
   empty visible rooms. No native invite-event inventory exists to reconcile; create
   and redeem remain authenticated REST actions. Normal channel behavior is retained.

@@ -54,6 +54,8 @@ class ChannelCompatibilityTest {
             check(method.name == "serverChannels"); ChannelsResponse(visible)
         } as EchonApi
         val store = ServersStore(api)
+        assertEquals(WsEvent.ChannelAccessChanged("s"), WsEventParser.parse("""{"event":"member-roles-changed","data":{"server_id":"s","user_id":"me"}}"""))
+        assertEquals(WsEvent.ChannelAccessChanged("s"), WsEventParser.parse("""{"event":"role-updated","data":{"server_id":"s","id":"r"}}"""))
         val channel = Channel("private", serverId = "s")
         store.upsertChannel(channel)
         store.loadChannels("s")

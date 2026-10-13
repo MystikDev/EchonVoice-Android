@@ -58,6 +58,7 @@ class RealtimeStore @Inject constructor(
 
     @Volatile var openChannelId: String? = null
 
+    private val channelRefreshJobs = mutableMapOf<String, Job>()
     private var channelAccessJob: Job? = null
     private var consumeJob: Job? = null
     private var reconcileJob: Job? = null
@@ -88,6 +89,8 @@ class RealtimeStore @Inject constructor(
         channelAccessJob = null
         reconcileJob?.cancelAndJoin()
         reconcileJob = null
+        channelRefreshJobs.values.forEach { it.cancel() }
+        channelRefreshJobs.clear()
         ws.stop()
         _isConnected.value = false
         typingStopJob?.cancel()
@@ -175,6 +178,20 @@ class RealtimeStore @Inject constructor(
                     catch (_: Exception) { /* Next Ready or selection reconciles again. */ }
                 }
             }
+            is WsEvent.ChannelAccessChanged -> {
+                val ids = event.serverId?.let(::listOf) ?: servers.servers.value.map { it.id }
+                ids.forEach { serverId ->
+                    channelRefreshJobs[serverId]?.cancel()
+                    channelRefreshJobs[serverId] = scope.launch {
+                        try {
+                            servers.loadChannels(serverId)
+                            servers.channelsFor(serverId).filter { it.type == ChannelKind.TEXT }.forEach { ws.join(it.id) }
+                            voice.refresh()
+                        } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                        catch (_: Exception) { /* Reconcile again on Ready or channel selection. */ }
+                    }
+                }
+            }
             is WsEvent.ChannelUpserted -> {
                 servers.upsertChannel(event.channel)
                 if (event.channel.type == ChannelKind.TEXT) ws.join(event.channel.id)
@@ -217,7 +234,10 @@ class RealtimeStore @Inject constructor(
         }
     }
 
-    private fun removeChannel(channelId: String) { servers.removeChannel(channelId) }
+    private fun removeChannel(channelId: String) {
+        servers.removeChannel(channelId)
+        purgeChannel(channelId) // Never lose explicit revocation to StateFlow conflation.
+    }
 
     private fun purgeChannel(channelId: String) {
         if (openChannelId == channelId) channelClosed(channelId)
