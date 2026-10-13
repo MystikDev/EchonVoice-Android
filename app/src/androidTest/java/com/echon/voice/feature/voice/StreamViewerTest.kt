@@ -91,6 +91,26 @@ class StreamViewerTest {
         compose.onNodeWithText("Watch screen share").assertIsDisplayed()
     }
 
+    @Test fun revokedVoiceScreenExitsWithoutRequestingMicrophoneOrJoining() {
+        val api = java.lang.reflect.Proxy.newProxyInstance(
+            com.echon.voice.core.network.EchonApi::class.java.classLoader,
+            arrayOf(com.echon.voice.core.network.EchonApi::class.java),
+        ) { _, _, _ -> error("A revoked channel must not make API requests") } as com.echon.voice.core.network.EchonApi
+        val servers = com.echon.voice.feature.servers.ServersStore(api)
+        servers.removeChannel("private")
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate)
+        val store = VoiceCallStore(compose.activity.applicationContext, api, scope)
+        val model = VoiceCallViewModel(androidx.lifecycle.SavedStateHandle(mapOf("channelId" to "private")), store, servers)
+        val exits = java.util.concurrent.atomic.AtomicInteger()
+        try {
+            compose.setContent { MaterialTheme { VoiceCallScreen(onBack = { exits.incrementAndGet() }, viewModel = model) } }
+            compose.waitUntil(5_000) { exits.get() == 1 }
+            org.junit.Assert.assertFalse(model.canJoin)
+            model.join()
+            org.junit.Assert.assertEquals(VoiceCallStore.CallState.Idle, store.state.value)
+        } finally { scope.coroutineContext[kotlinx.coroutines.Job]?.cancel() }
+    }
+
     private class EmptyCapturer : VideoCapturer {
         override fun initialize(helper: SurfaceTextureHelper?, context: Context?, observer: CapturerObserver?) = Unit
         override fun startCapture(width: Int, height: Int, framerate: Int) = Unit

@@ -156,6 +156,8 @@ class AuthStore @Inject constructor(
             _currentUser.value = me.user
             _phase.value = if (me.user.tosAccepted == true) Phase.SignedIn else Phase.NeedsEula
         } catch (e: ApiException.Unauthorized) {
+            // A delayed failure from an earlier session cannot sign out a later login.
+            if (generation != session.generation || signingOut) return
             if (session.storageUnavailable.value) _phase.value = Phase.StorageUnavailable
             else signOut()
         }

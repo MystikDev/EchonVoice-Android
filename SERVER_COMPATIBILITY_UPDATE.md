@@ -13,7 +13,8 @@ alone cannot establish desktop-to-phone media interoperability.
 - `channel-created` and `channel-updated` now upsert full channel data, including
   previously unknown channels whose access was restored. `channel-deleted` removes
   the channel, message cache, typing/unread state, room subscription, voice roster,
-  and active call for that channel. An open chat exits. Delayed REST results and
+  and active call for that channel. Open chat/voice screens exit, and a stale
+  voice route cannot rejoin or request microphone access after revocation. Delayed REST results and
   late queued messages cannot repopulate revoked content. Ready and subsequent
   selection reconcile channel access through REST, including changes missed offline.
   Role and member-role events refresh the affected server too; explicit revocations
@@ -126,6 +127,6 @@ acoustic behavior, codec interoperability, or production captcha acceptance.
 
 Local checks: 168 passing unit-test executions across Direct and Play, two optional
 skips, zero lint errors, and both minified variants built during development.
-The Android 15 ARM64 suite passed all 12 tests; the explicit Cloudflare always-pass
+The Android 15 ARM64 suite passed all 13 tests; the explicit Cloudflare always-pass
 fixture diagnostic returned a dummy token without making a registration request.
 Production signup acceptance remains separate from this fixture result.

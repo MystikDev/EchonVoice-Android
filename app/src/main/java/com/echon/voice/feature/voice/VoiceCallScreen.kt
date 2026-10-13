@@ -66,15 +66,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.livekit.android.room.Room
 import javax.inject.Inject
+import kotlinx.coroutines.flow.map
 
 @HiltViewModel
 class VoiceCallViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val store: VoiceCallStore,
+    private val servers: com.echon.voice.feature.servers.ServersStore,
 ) : ViewModel() {
     val channelId: String = checkNotNull(savedState["channelId"])
     val channelName: String = savedState["channelName"] ?: "voice"
 
+    val canJoin: Boolean get() = channelId !in servers.revokedChannelIds.value
+    val accessRevoked = servers.revokedChannelIds.map { channelId in it }
     val state = store.state
     val participants = store.participants
     val audio = store.audio
@@ -89,7 +93,7 @@ class VoiceCallViewModel @Inject constructor(
     val publishError = store.publishError
     val room: Room? get() = store.room
 
-    fun join() = store.join(channelId, channelName)
+    fun join() { if (canJoin) store.join(channelId, channelName) }
     fun toggleMute() = store.toggleMute()
     fun toggleCamera() = store.toggleCamera()
     fun flipCamera() = store.flipCamera()
@@ -102,6 +106,8 @@ fun VoiceCallScreen(
     onBack: () -> Unit,
     viewModel: VoiceCallViewModel = hiltViewModel(),
 ) {
+    val accessRevoked by viewModel.accessRevoked.collectAsStateWithLifecycle(initialValue = false)
+    LaunchedEffect(accessRevoked) { if (accessRevoked) onBack() }
     val context = LocalContext.current
     val state by viewModel.state.collectAsStateWithLifecycle()
     val participants by viewModel.participants.collectAsStateWithLifecycle()
@@ -126,6 +132,7 @@ fun VoiceCallScreen(
     }
 
     fun joinWithPermissions() {
+        if (!viewModel.canJoin) return
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         val bluetoothGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
