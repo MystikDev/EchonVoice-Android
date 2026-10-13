@@ -179,7 +179,7 @@ class WsClient @Inject constructor(
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            if (!closed.isCompleted) closed.complete(response?.code == 401)
+            if (!closed.isCompleted) closed.complete(isRevokedHandshake(response))
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
@@ -199,4 +199,14 @@ class WsClient @Inject constructor(
     private companion object {
         const val BACKOFF_MS = 5_000L
     }
+}
+
+/** A one-time ticket may expire while the account is still valid. Only a confirmed
+ * session rejection ends sign-in; other handshake failures fetch a fresh ticket. */
+internal fun isRevokedHandshake(response: Response?): Boolean {
+    if (response?.code !in setOf(401, 403)) return false
+    val body = runCatching {
+        EchonJson.decodeFromString(com.echon.voice.core.network.ServerErrorEnvelope.serializer(), response!!.peekBody(4096).string())
+    }.getOrNull() ?: return false
+    return (body.code ?: body.text) in setOf("token_version_mismatch", "session_revoked", "account_disabled")
 }

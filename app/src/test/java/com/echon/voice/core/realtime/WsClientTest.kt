@@ -29,7 +29,7 @@ class WsClientTest {
             val handshakeRejected = mode == "rejected-handshake"
             val disabled = mode == "disabled-account"
             val server = MockWebServer()
-            if (handshakeRejected) server.enqueue(MockResponse().setResponseCode(401))
+            if (handshakeRejected) server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":"token_version_mismatch"}"""))
             else server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) { webSocket.close(4001, "session revoked") }
             }))
@@ -65,6 +65,38 @@ class WsClientTest {
                 ws.stop(); consumer.cancel(); scope.cancel()
                 client.dispatcher.executorService.shutdown(); client.connectionPool.evictAll(); server.shutdown()
             }
+        }
+    }
+
+    @Test fun expiredTicketReconnectsWithFreshTicketWithoutClearingHealthySession() = runBlocking {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":"invalid_ticket"}"""))
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) { webSocket.send("""{"type":"ready"}""") }
+        }))
+        server.start()
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            chain.proceed(chain.request().newBuilder().url(server.url("/v1/ws")).build())
+        }.build()
+        val tickets = java.util.concurrent.atomic.AtomicInteger()
+        val api = Proxy.newProxyInstance(EchonApi::class.java.classLoader, arrayOf(EchonApi::class.java)) { _, _, _ ->
+            TicketResponse("ticket-${tickets.incrementAndGet()}")
+        } as EchonApi
+        val session = com.echon.voice.core.network.SessionStore(object : com.echon.voice.core.storage.TokenStorage {
+            override var accessToken: String? = "access"
+            override var refreshToken: String? = "refresh"
+            override fun clear() { accessToken = null; refreshToken = null }
+        })
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val ws = WsClient(api, client, session, scope)
+        val ready = CompletableDeferred<Unit>()
+        val consumer = launch(start = CoroutineStart.UNDISPATCHED) { ws.events.collect { if (it == WsEvent.Ready) ready.complete(Unit) } }
+        try {
+            ws.start(); withTimeout(10_000) { ready.await() }
+            assertTrue(session.hasSession); assertEquals("access", session.accessToken); assertEquals(2, tickets.get())
+        } finally {
+            ws.stop(); consumer.cancel(); scope.cancel()
+            client.dispatcher.executorService.shutdown(); client.connectionPool.evictAll(); server.shutdown()
         }
     }
 
