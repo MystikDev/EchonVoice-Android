@@ -1,9 +1,9 @@
 {
-  "version_code": 31,
-  "version_name": "2.0.30",
+  "version_code": 32,
+  "version_name": "2.0.31",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Updated the in-app Echon header icon to match the Android launcher artwork. Includes the LiveKit, signup, private-channel, and screen-sharing improvements from 2.0.30.",
-  "sha256": "5fad128fdfd321cfcf10d12b3b782c7465b2656cb7971f2f80299ce0a26e8826"
+  "sha256": "38f60bfa7637473dd07b5976b5ab4f75a989a46faf8b88d76b89973638a73059"
 }
