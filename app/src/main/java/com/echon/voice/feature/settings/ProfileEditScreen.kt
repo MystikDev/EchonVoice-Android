@@ -130,10 +130,12 @@ fun ProfileEditScreen(onBack: () -> Unit, viewModel: ProfileEditViewModel = hilt
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Avatar(user = viewModel.run { authStoreUserForAvatar() }, size = 64.dp)
-                OutlinedButton(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !viewModel.busy) {
-                    Text("Change avatar")
+                Column {
+                    OutlinedButton(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !viewModel.busy) {
+                        Text("Change avatar")
+                    }
+                    TextButton(onClick = viewModel::clearAvatar, enabled = !viewModel.busy) { Text("Remove avatar") }
                 }
-                TextButton(onClick = viewModel::clearAvatar, enabled = !viewModel.busy) { Text("Remove") }
             }
             OutlinedTextField(value = viewModel.about, onValueChange = { viewModel.about = it }, label = { Text("About") }, modifier = Modifier.fillMaxWidth())
             Text("Who can DM you", style = MaterialTheme.typography.titleSmall)
