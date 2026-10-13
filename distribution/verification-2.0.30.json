@@ -1,0 +1,90 @@
+{
+  "version_name": "2.0.30",
+  "version_code": 31,
+  "verified_at": "2026-10-13T20:06:54.381157+00:00",
+  "source_commit": "07fb8ba00b9fc5c0a5dc5f9e82a357cda27523c0",
+  "release_url": "https://github.com/MystikDev/EchonVoice-Android/releases/tag/v2.0.30",
+  "workflow_url": "https://github.com/MystikDev/EchonVoice-Android/actions/runs/38455287388",
+  "release_workflow_attempt": 2,
+  "pre_release_validation_attempt": 1,
+  "release_first_attempt_note": "The API 24 runner failed to install the debug APK before any tests ran (Failed to install-write all apks). Other validation and security jobs passed. Required gates were retained and the failed job was retried unchanged on a fresh runner; the underlying installation failure cause was not established.",
+  "earlier_validation_url": "https://github.com/MystikDev/EchonVoice-Android/actions/runs/38450373758",
+  "earlier_validation_source": "0ba93e3f8a5146ed02086dffca1c8e825280e4ec",
+  "earlier_validation_note": "An earlier revision passed all 13 API 24 tests, then adb installation of the minified APK timed out after 120 seconds before launch. An unchanged fresh-runner retry passed, including release startup. The cause was not established.",
+  "pre_release_validation_url": "https://github.com/MystikDev/EchonVoice-Android/actions/runs/38455284649",
+  "pre_release_security_url": "https://github.com/MystikDev/EchonVoice-Android/actions/runs/38455285014",
+  "website_url": "https://echon-voice.com/android.html",
+  "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
+  "sha256": "5fad128fdfd321cfcf10d12b3b782c7465b2656cb7971f2f80299ce0a26e8826",
+  "signer_certificate_sha256": "bdfbbbf992e30b1b5bf07fdcedc09133c1db684623aab457c2ef95ecc5e6b836",
+  "min_sdk": 24,
+  "target_sdk": 36,
+  "compile_sdk": 37,
+  "livekit_android_sdk": "2.29.0",
+  "package_version_verified": true,
+  "signature_continuity_verified": true,
+  "zip_16kb_alignment_verified": true,
+  "native_64bit_load_alignment_verified": [
+    {
+      "library": "lib/arm64-v8a/libandroidx.graphics.path.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/arm64-v8a/libjnidispatch.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/arm64-v8a/liblivekit_uniffi.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/arm64-v8a/liblkjingle_peerconnection_so.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/mips64/libjnidispatch.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/x86_64/libandroidx.graphics.path.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/x86_64/libjnidispatch.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/x86_64/liblivekit_uniffi.so",
+      "minimum_load_alignment": 16384
+    },
+    {
+      "library": "lib/x86_64/liblkjingle_peerconnection_so.so",
+      "minimum_load_alignment": 16384
+    }
+  ],
+  "public_manifest_hash_verified": true,
+  "github_asset_digest_verified": true,
+  "github_provenance_and_source_commit_verified": true,
+  "website_download_verified": true,
+  "firebase_enabled_in_release": true,
+  "notification_bell_verified": true,
+  "launcher_resources_verified": true,
+  "local_unit_test_executions_passed": 170,
+  "optional_unit_test_executions_skipped": 2,
+  "lint_errors": 0,
+  "emulator_configurations_passed": 6,
+  "emulator_test_executions_passed": 78,
+  "minified_release_startup_checks_passed": 6,
+  "public_apk_startup_verified_locally": true,
+  "runtime_dependencies_scanned": 201,
+  "public_apk_signed_out_upgrade_from": "2.0.28 (29)",
+  "public_apk_in_place_upgrade_verified": true,
+  "original_install_time_preserved": true,
+  "turnstile_public_test_fixture_token_delivery_verified": true,
+  "production_turnstile_signup_success_verified": false,
+  "production_emulator_turnstile_result": "Challenge loaded, Cloudflare returned 300010, native retry message appeared.",
+  "authenticated_upgrade_tested": false,
+  "physical_audio_and_desktop_h264_acceptance_tested": false,
+  "streamdeck_com_echon_voice_handshake_fixed": false,
+  "streamdeck_remaining_requirement": "User deferred to a later PC-side session where the matching plugin source is located; coordinated desktop/plugin v2 implementation remains required."
+}

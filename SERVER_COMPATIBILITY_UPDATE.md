@@ -133,3 +133,52 @@ skips, zero lint errors, and both minified variants built during development.
 The Android 15 ARM64 suite passed all 13 tests; the explicit Cloudflare always-pass
 fixture diagnostic returned a dummy token without making a registration request.
 Production signup acceptance remains separate from this fixture result.
+
+
+## Published 2.0.30 verification
+
+Published Android **2.0.30 (31)** from `07fb8ba00b9fc5c0a5dc5f9e82a357cda27523c0`. The previous
+v2.0.29 release run was cancelled before publication; its tag remains unchanged.
+Version 2.0.30 includes the final fullscreen overlay and compact closed-share fixes.
+
+- [Main validation](https://github.com/MystikDev/EchonVoice-Android/actions/runs/38455284649): all seven jobs passed on the release source.
+- [Main security scan](https://github.com/MystikDev/EchonVoice-Android/actions/runs/38455285014): passed.
+- [Tagged release](https://github.com/MystikDev/EchonVoice-Android/actions/runs/38455287388): all nine required jobs passed; final workflow attempt 2.
+- 170 passing local unit-test executions, two optional skips, zero lint errors, and both minified variants built. Tagged validation passed 78 instrumentation executions across six emulator configurations and six minified startup checks. The dependency scan reported 201 packages and no issues.
+
+The tagged release's first API 24 attempt failed to install the debug APK
+(`Failed to install-write all apks`) before tests ran. An unchanged fresh-runner
+retry passed the required tests and release startup. Earlier validation on
+`0ba93e3f8a5146ed02086dffca1c8e825280e4ec` passed all 13 API 24 tests, then timed out
+installing the minified APK after 120 seconds; that unchanged retry also passed.
+Neither installation failure's underlying cause was established. No gate or
+assertion was removed, and no timeout was extended to obtain these results.
+
+Downloaded the public APK through the stable link used by
+[the website](https://echon-voice.com/android.html). Verified package/version, manifest and GitHub
+asset SHA-256 agreement, release signature continuity, GitHub provenance tied to
+the exact tag/source/workflow, 16 KB ZIP alignment and every packaged 64-bit ELF
+LOAD alignment, launcher resources, and the notification bell fallback. Firebase
+was enabled in the signed release build.
+
+APK SHA-256: `5fad128fdfd321cfcf10d12b3b782c7465b2656cb7971f2f80299ce0a26e8826`.
+Signing certificate SHA-256: `bdfbbbf992e30b1b5bf07fdcedc09133c1db684623aab457c2ef95ecc5e6b836`.
+
+The downloaded public APK installed over the official 2.0.28 (29) on the Android
+15 ARM64 emulator, preserved the original installation time, and reached the
+sign-in screen. This was a signed-out in-place upgrade, not an authenticated
+account migration or a physical-device test. Machine-readable evidence is in
+`distribution/verification-2.0.30.json`.
+
+Real-phone acceptance remains required for production signup, private-channel
+permission loss/restoration, session revocation during a call, desktop H.264
+sharing, independent share-audio mute while speech remains audible, Bluetooth,
+weak networks, rotation, and notifications/invites. The production captcha loaded
+in the emulator but Cloudflare returned 300010; native retry appeared. The public
+always-pass fixture delivered a dummy token without account creation. Mandatory
+captcha enforcement was not enabled and should wait for successful production
+signup on a real phone and user adoption.
+
+The separate com.echon.voice Stream Deck fix still requires the matching plugin
+source and a coordinated update of both desktop/plugin peers. The user confirmed
+the source is on the PC and deferred that work to a later PC-side session.
