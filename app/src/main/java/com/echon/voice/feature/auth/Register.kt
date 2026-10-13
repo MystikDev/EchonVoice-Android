@@ -130,7 +130,7 @@ class RegisterViewModel internal constructor(
             dateOfBirth != null &&
             tosAccepted &&
             !isLoading && !captchaLoading && captchaConfig != null &&
-            (captchaConfig?.siteKey == null || captchaToken != null)
+            (captchaConfig?.siteKey == null || captchaConfig?.required == false || captchaToken != null)
 
     fun submit() {
         if (!canSubmit) return
@@ -147,7 +147,7 @@ class RegisterViewModel internal constructor(
                     "captcha_required" -> "Please complete the check before creating your account."
                     else -> e.message
                 }
-                if (code == "captcha_required" && captchaConfig?.siteKey == null) {
+                if (code == "captcha_required") {
                     captchaConfig = null // Refresh config if enforcement changed while this form was open.
                 }
             } finally {

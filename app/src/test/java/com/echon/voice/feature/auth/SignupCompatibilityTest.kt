@@ -30,7 +30,7 @@ class SignupCompatibilityTest {
             val model = RegisterViewModel({ _, _, _, _, token ->
                 tokens += token
                 throw ApiException.Http(400, "captcha_failed")
-            }, api { CaptchaConfig(siteKey = "0xExample", required = false) })
+            }, api { CaptchaConfig(siteKey = "0xExample", required = true) })
             fill(model); assertFalse(model.canSubmit)
             advanceUntilIdle(); assertFalse(model.canSubmit)
             val revision = model.captchaRevision
@@ -57,6 +57,26 @@ class SignupCompatibilityTest {
             fill(model); advanceUntilIdle(); assertFalse(model.canSubmit); assertNotNull(model.captchaError)
             fail = false; model.loadCaptcha(); advanceUntilIdle(); assertTrue(model.canSubmit)
             model.submit(); advanceUntilIdle(); assertEquals(listOf<String?>(null), tokens)
+            val optional = RegisterViewModel({ _, _, _, _, token -> tokens += token }, api {
+                CaptchaConfig(siteKey = "0xExample", required = false)
+            })
+            fill(optional); advanceUntilIdle(); assertTrue(optional.canSubmit)
+            optional.submit(); advanceUntilIdle(); assertEquals(listOf<String?>(null, null), tokens)
+        } finally { Dispatchers.resetMain() }
+    }
+
+    @Test fun enforcementChangeRefreshesConfigurationAndRequiresFreshToken() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            var enforced = false
+            val model = RegisterViewModel({ _, _, _, _, _ ->
+                enforced = true
+                throw ApiException.Http(400, "captcha_required")
+            }, api { CaptchaConfig(siteKey = "0xExample", required = enforced) })
+            fill(model); advanceUntilIdle(); assertTrue(model.canSubmit)
+            model.submit(); advanceUntilIdle()
+            assertTrue(model.captchaConfig!!.required); assertFalse(model.canSubmit)
+            model.onCaptchaToken(model.captchaRevision, "fresh-token"); assertTrue(model.canSubmit)
         } finally { Dispatchers.resetMain() }
     }
 

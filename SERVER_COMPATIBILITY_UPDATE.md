@@ -41,7 +41,10 @@ alone cannot establish desktop-to-phone media interoperability.
 ## Signup captcha
 
 Signup fetches unauthenticated `/v1/auth/captcha`. A null site key skips the widget;
-configuration errors show retry rather than guessing enforcement state. The
+configuration errors show retry rather than guessing enforcement state. When a
+key is configured, optional checks send a token if available; required checks block
+submission until a fresh token is available. A `captcha_required` response refreshes
+configuration in case enforcement changed while the form was open. The
 controlled HTML loads with `https://echon-voice.com/` as its base and the `signup`
 action. A returned token is included as `captcha_token`; login is unchanged.
 Every completed submit attempt clears the single-use token and recreates the
@@ -118,7 +121,7 @@ independent share-audio mute while speech remains audible, portrait/landscape
 fullscreen, and the launcher icon. Automated policy/layout checks do not establish
 acoustic behavior, codec interoperability, or production captcha acceptance.
 
-Local checks: 166 passing unit-test executions across Direct and Play, two optional
+Local checks: 168 passing unit-test executions across Direct and Play, two optional
 skips, zero lint errors, and both minified variants built during development.
 The Android 15 ARM64 suite passed all 12 tests; the explicit Cloudflare always-pass
 fixture diagnostic returned a dummy token without making a registration request.
