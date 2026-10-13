@@ -23,6 +23,7 @@ data class Message(
     // Local-echo state for optimistic sends; never encoded/decoded.
     @Transient val isLocalEcho: Boolean = false,
     @Transient val sendFailed: Boolean = false,
+    @Transient val sendError: String? = null,
 )
 
 @Serializable

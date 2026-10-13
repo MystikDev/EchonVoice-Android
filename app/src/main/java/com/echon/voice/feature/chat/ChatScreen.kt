@@ -67,6 +67,8 @@ fun ChatScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val messages by viewModel.visibleMessages.collectAsStateWithLifecycle()
+    val accessRevoked by viewModel.accessRevoked.collectAsStateWithLifecycle(initialValue = false)
+    LaunchedEffect(accessRevoked) { if (accessRevoked) onBack() }
     val typing by viewModel.typingNames.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -141,6 +143,10 @@ fun ChatScreen(
             // Keep the composer above the keyboard (ime) AND the system navigation
             // bar — union takes the max per side so they don't double-pad.
             Column(modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))) {
+                viewModel.loadError?.let { error ->
+                    Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
+                    androidx.compose.material3.TextButton(onClick = { viewModel.retryLoad() }) { Text("Retry loading messages") }
+                }
                 TypingIndicator(typing)
                 ContextBanner(viewModel)
                 PendingChips(viewModel)

@@ -43,6 +43,7 @@ class ChatViewModel @Inject constructor(
     private val auth: AuthStore,
     private val blocks: BlocksStore,
     private val api: EchonApi,
+    private val servers: com.echon.voice.feature.servers.ServersStore,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -67,6 +68,8 @@ class ChatViewModel @Inject constructor(
                 .map { it.withoutBlockedReactions(blocked) }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val accessRevoked = combine(servers.revokedChannelIds, store.accessRevoked) { channels, denied -> denied || channelId in channels }
+
     val loadingOlder: StateFlow<Boolean> = store.loadingOlder
 
     val typingNames: StateFlow<List<String>> =
@@ -75,6 +78,9 @@ class ChatViewModel @Inject constructor(
                 store.messages.value.lastOrNull { it.author?.id == id }?.author?.username ?: "Someone"
             }.sorted()
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    var loadError by mutableStateOf<String?>(null)
+        private set
 
     var draft by mutableStateOf("")
     var replyTarget by mutableStateOf<Message?>(null)
@@ -87,8 +93,9 @@ class ChatViewModel @Inject constructor(
         private set
 
     fun onEnter() {
+        if (channelId in servers.revokedChannelIds.value) return
         realtime.channelOpened(channelId)
-        viewModelScope.launch { store.loadInitial() }
+        loadMessages()
     }
 
     fun onLeave() = realtime.channelClosed(channelId)
@@ -98,9 +105,23 @@ class ChatViewModel @Inject constructor(
         if (text.isNotEmpty()) realtime.userIsTyping(channelId)
     }
 
-    fun loadOlder() = viewModelScope.launch { store.loadOlder() }
+    fun retryLoad() { if (store.messages.value.isEmpty()) loadMessages() else loadOlder() }
+
+    fun loadMessages() = viewModelScope.launch {
+        loadError = null
+        try { store.loadInitial() }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (_: Exception) { loadError = "Couldn't load messages. Please retry." }
+    }
+
+    fun loadOlder() = viewModelScope.launch {
+        try { store.loadOlder() }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (_: Exception) { loadError = "Couldn't load older messages. Please retry." }
+    }
 
     fun send() {
+        if (channelId in servers.revokedChannelIds.value) return
         val edit = editTarget
         if (edit != null) {
             val text = draft
@@ -161,6 +182,7 @@ class ChatViewModel @Inject constructor(
     }
 
     fun attach(uris: List<Uri>) {
+        if (channelId in servers.revokedChannelIds.value) return
         if (uris.isEmpty()) return
         viewModelScope.launch {
             uploading = true
@@ -183,7 +205,7 @@ class ChatViewModel @Inject constructor(
                         OutgoingAttachment(name, response.url, response.mimetype ?: mime, response.size ?: bytes.size)
                     }
                 }
-                pending = pending + results
+                if (channelId !in servers.revokedChannelIds.value) pending = pending + results
             } catch (e: Exception) {
                 // Surface nothing fatal; failed uploads simply don't attach.
             } finally {

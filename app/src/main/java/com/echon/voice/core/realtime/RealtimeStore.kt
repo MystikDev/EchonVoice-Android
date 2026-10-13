@@ -42,6 +42,7 @@ class RealtimeStore @Inject constructor(
     private val dms: DMsStore,
     private val friends: FriendsStore,
     private val voice: VoiceStore,
+    private val calls: com.echon.voice.feature.voice.VoiceCallStore,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     private val _isConnected = MutableStateFlow(false)
@@ -57,6 +58,7 @@ class RealtimeStore @Inject constructor(
 
     @Volatile var openChannelId: String? = null
 
+    private var channelAccessJob: Job? = null
     private var consumeJob: Job? = null
     private var reconcileJob: Job? = null
     private val myId: String? get() = auth.currentUser.value?.id
@@ -67,6 +69,14 @@ class RealtimeStore @Inject constructor(
 
     fun start() {
         if (consumeJob != null) return
+        channelAccessJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            var previous = emptySet<String>()
+            servers.revokedChannelIds.collect { revoked ->
+                val newlyRevoked = revoked - previous
+                previous = revoked
+                newlyRevoked.forEach { purgeChannel(it) }
+            }
+        }
         consumeJob = scope.launch(start = CoroutineStart.UNDISPATCHED) { ws.events.collect { handle(it) } }
         ws.start()
     }
@@ -74,6 +84,8 @@ class RealtimeStore @Inject constructor(
     suspend fun stop() {
         consumeJob?.cancelAndJoin()
         consumeJob = null
+        channelAccessJob?.cancelAndJoin()
+        channelAccessJob = null
         reconcileJob?.cancelAndJoin()
         reconcileJob = null
         ws.stop()
@@ -96,6 +108,7 @@ class RealtimeStore @Inject constructor(
     }
 
     fun channelOpened(channelId: String) {
+        if (channelId in servers.revokedChannelIds.value) return
         openChannelId = channelId
         _unreadChannelIds.update { it - channelId }
         ws.join(channelId)
@@ -109,6 +122,7 @@ class RealtimeStore @Inject constructor(
     // --- Outgoing typing throttle ---
 
     fun userIsTyping(channelId: String) {
+        if (channelId in servers.revokedChannelIds.value) return
         val now = System.currentTimeMillis()
         if (now - lastTypingSentAt > 3_000) {
             lastTypingSentAt = now
@@ -138,7 +152,9 @@ class RealtimeStore @Inject constructor(
                 reconcileJob?.cancel()
                 reconcileJob = scope.launch {
                     joinAllTextChannels()
-                    openChannelId?.let { chat.store(it).reconcileLatest() }
+                    try { openChannelId?.let { chat.store(it).reconcileLatest() } }
+                    catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                    catch (_: Exception) { /* Permission loss clears the store; transient failure can retry. */ }
                 }
             }
             is WsEvent.SocketDisconnected -> {
@@ -146,9 +162,28 @@ class RealtimeStore @Inject constructor(
                 presenceStore.disconnect()
             }
             // Ready follows server registration; querying on TCP open can predate presence.
-            is WsEvent.Ready -> presenceStore.connect()
+            is WsEvent.Ready -> {
+                presenceStore.connect()
+                reconcileJob?.cancel()
+                reconcileJob = scope.launch {
+                    try {
+                        servers.loadServers()
+                        servers.servers.value.forEach { servers.loadChannels(it.id) }
+                        joinAllTextChannels()
+                        voice.refresh()
+                    } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                    catch (_: Exception) { /* Next Ready or selection reconciles again. */ }
+                }
+            }
+            is WsEvent.ChannelUpserted -> {
+                servers.upsertChannel(event.channel)
+                if (event.channel.type == ChannelKind.TEXT) ws.join(event.channel.id)
+                voice.refresh()
+            }
+            is WsEvent.ChannelDeleted -> removeChannel(event.channelId)
             is WsEvent.MessageNew -> {
                 val channelId = event.message.channelId ?: return
+                if (channelId in servers.revokedChannelIds.value) return
                 val kind = if (event.message.channelKind == "dm") ChatChannelKind.DM else ChatChannelKind.SERVER
                 chat.store(channelId, kind).applyRemote(event.message)
                 clearTyping(event.message.author?.id, channelId)
@@ -157,11 +192,12 @@ class RealtimeStore @Inject constructor(
                     _unreadChannelIds.update { it + channelId }
                 }
             }
-            is WsEvent.MessageUpdated -> event.message.channelId?.let { chat.store(it).applyUpdate(event.message) }
+            is WsEvent.MessageUpdated -> event.message.channelId?.takeUnless { it in servers.revokedChannelIds.value }?.let { chat.store(it).applyUpdate(event.message) }
             is WsEvent.MessageDeleted ->
                 if (event.channelId != null) chat.store(event.channelId).applyDelete(event.messageId)
                 else chat.applyDeleteEverywhere(event.messageId)
             is WsEvent.TypingUpdate -> {
+                if (event.channelId in servers.revokedChannelIds.value) return
                 if (event.userId == myId) return
                 if (event.isTyping) {
                     _typingUsers.update { it + (event.channelId to (it[event.channelId].orEmpty() + event.userId)) }
@@ -179,6 +215,19 @@ class RealtimeStore @Inject constructor(
             is WsEvent.Unknown,
             -> Unit
         }
+    }
+
+    private fun removeChannel(channelId: String) { servers.removeChannel(channelId) }
+
+    private fun purgeChannel(channelId: String) {
+        if (openChannelId == channelId) channelClosed(channelId)
+        ws.leave(channelId)
+        chat.revoke(channelId)
+        calls.revokeChannel(channelId)
+        voice.removeChannel(channelId)
+        _typingUsers.update { it - channelId }
+        _unreadChannelIds.update { it - channelId }
+        typingExpiry.keys.filter { it.startsWith("$channelId/") }.forEach { typingExpiry.remove(it)?.cancel() }
     }
 
     private fun clearTyping(userId: String?, channelId: String) {

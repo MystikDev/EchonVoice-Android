@@ -23,6 +23,7 @@ data class RegisterRequest(
     val username: String,
     val password: String,
     val dateOfBirth: String,
+    val captchaToken: String? = null,
 )
 
 /** POST /v1/auth/login and register → {token, refresh_token, user}. */
@@ -43,3 +44,7 @@ data class RefreshResponse(
 /** GET /v1/me → {user: {...}}. */
 @Serializable
 data class MeResponse(val user: User)
+
+/** Signup-only public configuration. An absent key disables the widget. */
+@Serializable
+data class CaptchaConfig(val provider: String = "turnstile", val siteKey: String? = null, val required: Boolean = false)

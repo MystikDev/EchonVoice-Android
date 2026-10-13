@@ -99,6 +99,7 @@ fun MessageRow(
             }
 
             if (message.sendFailed) {
+                message.sendError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Failed to send", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                     Text("Retry", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, modifier = Modifier.clickable(onClick = onRetry))

@@ -28,8 +28,8 @@ android {
         applicationId = "com.echon.voice"
         minSdk = 24
         targetSdk = 36
-        versionCode = 29
-        versionName = "2.0.28"
+        versionCode = 30
+        versionName = "2.0.29"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -152,6 +152,7 @@ dependencies {
     "directImplementation"(libs.androidx.work.runtime.ktx)
 
     implementation(libs.livekit.android)
+    implementation(libs.androidx.webkit)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 

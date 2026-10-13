@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.livekit.android.LiveKit
@@ -40,6 +41,7 @@ class StreamViewerTest {
         }
         compose.activityRule.scenario.onActivity { it.setContent(content = content) }
         try {
+            val portrait = compose.onNodeWithTag("stream-viewport").fetchSemanticsNode().boundsInRoot
             compose.onNodeWithText("Zoom out").assertIsNotEnabled()
             compose.onNodeWithText("Zoom in").performClick()
             compose.onNodeWithText("Zoom out").assertIsEnabled()
@@ -54,6 +56,9 @@ class StreamViewerTest {
             compose.activityRule.scenario.onActivity { it.setContent(content = content) }
             compose.waitForIdle()
             compose.onNodeWithText("Close").assertIsDisplayed()
+            val landscape = compose.onNodeWithTag("stream-viewport").fetchSemanticsNode().boundsInRoot
+            org.junit.Assert.assertTrue("Fullscreen must become wider on landscape rotation", landscape.width > portrait.width)
+            org.junit.Assert.assertTrue("Landscape must use the resized viewport", landscape.width > landscape.height)
             repeat(5) {
                 compose.onNodeWithText("Close").performClick()
                 compose.runOnIdle { visible.value = true }
@@ -65,6 +70,25 @@ class StreamViewerTest {
             track.dispose()
             room.release()
         }
+    }
+
+    @Test fun screenShareRequiresWatchAndAudioMuteIsIndependent() {
+        val watching = mutableStateOf(false)
+        val muted = mutableStateOf(false)
+        compose.setContent {
+            MaterialTheme {
+                StreamViewingControls(LiveStream("share", "Someone", true, null), watching.value, muted.value,
+                    watch = { watching.value = it }, mute = { muted.value = it }, fullscreen = {})
+            }
+        }
+        compose.onNodeWithText("Watch screen share").assertIsDisplayed()
+        compose.onNodeWithText("Mute share audio").assertDoesNotExist()
+        compose.onNodeWithText("Watch screen share").performClick()
+        compose.onNodeWithText("Mute share audio").performClick()
+        compose.onNodeWithText("Stop watching").assertIsDisplayed()
+        compose.onNodeWithText("Unmute share audio").assertIsDisplayed()
+        compose.onNodeWithText("Stop watching").performClick()
+        compose.onNodeWithText("Watch screen share").assertIsDisplayed()
     }
 
     private class EmptyCapturer : VideoCapturer {

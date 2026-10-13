@@ -25,6 +25,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -45,9 +46,12 @@ import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 @HiltViewModel
-class RegisterViewModel @Inject constructor(
-    private val authStore: AuthStore,
+class RegisterViewModel internal constructor(
+    private val registerAccount: suspend (String, String, String, String, String?) -> Unit,
+    private val api: com.echon.voice.core.network.EchonApi,
 ) : ViewModel() {
+    @Inject constructor(authStore: AuthStore, api: com.echon.voice.core.network.EchonApi) : this(authStore::register, api)
+
     var email by mutableStateOf("")
     var username by mutableStateOf("")
     var password by mutableStateOf("")
@@ -62,6 +66,56 @@ class RegisterViewModel @Inject constructor(
     var error by mutableStateOf<String?>(null)
         private set
 
+    var captchaConfig by mutableStateOf<com.echon.voice.model.CaptchaConfig?>(null)
+        private set
+    var captchaLoading by mutableStateOf(false)
+        private set
+    var captchaError by mutableStateOf<String?>(null)
+        private set
+    var captchaToken by mutableStateOf<String?>(null)
+        private set
+    var captchaRevision by mutableStateOf(0)
+        private set
+
+    init { loadCaptcha() }
+
+    fun loadCaptcha() {
+        if (captchaLoading || isLoading) return
+        captchaLoading = true
+        captchaError = null
+        resetCaptcha()
+        viewModelScope.launch {
+            try {
+                val config = com.echon.voice.core.network.apiCall { api.captchaConfig() }
+                require(config.siteKey == null || (config.provider == "turnstile" && validSiteKey(config.siteKey)))
+                require(!config.required || config.siteKey != null)
+                captchaConfig = config
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (_: Exception) {
+                captchaConfig = null
+                captchaError = "Couldn't load the signup check. Please retry."
+            } finally { captchaLoading = false }
+        }
+    }
+
+    fun onCaptchaToken(revision: Int, token: String) {
+        if (revision != captchaRevision || isLoading) return
+        captchaToken = token.takeIf { it.isNotBlank() && it.length <= 2048 }
+        if (captchaToken != null) captchaError = null
+    }
+
+    fun onCaptchaError(revision: Int) {
+        if (revision != captchaRevision || isLoading) return
+        captchaToken = null
+        captchaError = "Couldn't complete the check. Please retry. If this continues, update Android System WebView."
+    }
+
+    fun resetCaptcha() {
+        captchaToken = null
+        captchaRevision++ // Old WebViews cannot supply a token for the next attempt.
+        captchaError = null
+    }
+
     fun setDateOfBirthMillis(utcMillis: Long) {
         dateOfBirth = Instant.ofEpochMilli(utcMillis)
             .atZone(ZoneOffset.UTC)
@@ -75,19 +129,31 @@ class RegisterViewModel @Inject constructor(
             password.length >= 8 &&
             dateOfBirth != null &&
             tosAccepted &&
-            !isLoading
+            !isLoading && !captchaLoading && captchaConfig != null &&
+            (captchaConfig?.siteKey == null || captchaToken != null)
 
     fun submit() {
         if (!canSubmit) return
+        val token = captchaToken
+        isLoading = true
         viewModelScope.launch {
-            isLoading = true
             error = null
             try {
-                authStore.register(email.trim(), username.trim(), password, dateOfBirth!!)
+                registerAccount(email.trim(), username.trim(), password, dateOfBirth!!, token)
             } catch (e: ApiException) {
-                error = e.message
+                val code = (e as? ApiException.Http)?.code ?: e.message
+                error = when (code) {
+                    "captcha_failed" -> "Please try the check again."
+                    "captcha_required" -> "Please complete the check before creating your account."
+                    else -> e.message
+                }
+                if (code == "captcha_required" && captchaConfig?.siteKey == null) {
+                    captchaConfig = null // Refresh config if enforcement changed while this form was open.
+                }
             } finally {
+                resetCaptcha()
                 isLoading = false
+                if (captchaConfig == null) loadCaptcha()
             }
         }
     }
@@ -176,6 +242,27 @@ fun RegisterScreen(
                 "I agree to the Terms of Service and Privacy Policy",
                 style = MaterialTheme.typography.bodySmall,
             )
+        }
+
+        if (viewModel.captchaLoading) {
+            Text("Loading signup check…", modifier = Modifier.padding(top = 12.dp))
+        }
+        viewModel.captchaConfig?.siteKey?.let { siteKey ->
+            val revision = viewModel.captchaRevision
+            key(siteKey, revision) {
+                TurnstileWidget(
+                    siteKey = siteKey,
+                    onToken = { viewModel.onCaptchaToken(revision, it) },
+                    onError = { viewModel.onCaptchaError(revision) },
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                )
+            }
+        }
+        viewModel.captchaError?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
+            TextButton(onClick = {
+                if (viewModel.captchaConfig == null) viewModel.loadCaptcha() else viewModel.resetCaptcha()
+            }, enabled = !viewModel.isLoading) { Text("Retry signup check") }
         }
 
         viewModel.error?.let { message ->

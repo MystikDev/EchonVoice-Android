@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -43,7 +44,8 @@ internal fun VideoStreamView(
     modifier: Modifier = Modifier,
     fill: Boolean = false,
 ) {
-    key(room, track) {
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    key(room, track, configuration.orientation) {
         AndroidView(
             modifier = modifier,
             factory = { context ->
@@ -55,10 +57,9 @@ internal fun VideoStreamView(
                 }
             },
             update = { renderer ->
-                renderer.setScalingType(
-                    if (fill) RendererCommon.ScalingType.SCALE_ASPECT_FILL
-                    else RendererCommon.ScalingType.SCALE_ASPECT_FIT,
-                )
+                val scaling = if (fill) RendererCommon.ScalingType.SCALE_ASPECT_FILL else RendererCommon.ScalingType.SCALE_ASPECT_FIT
+                renderer.setScalingType(scaling, scaling)
+                renderer.requestLayout()
             },
             onRelease = { renderer ->
                 track.removeRenderer(renderer)
@@ -70,7 +71,7 @@ internal fun VideoStreamView(
 }
 
 @Composable
-internal fun FullscreenStream(room: Room, stream: LiveStream, onClose: () -> Unit) {
+internal fun FullscreenStream(room: Room, stream: LiveStream, audioMuted: Boolean = false, onToggleAudio: (() -> Unit)? = null, onClose: () -> Unit) {
     Dialog(
         onDismissRequest = onClose,
         properties = DialogProperties(
@@ -79,18 +80,26 @@ internal fun FullscreenStream(room: Room, stream: LiveStream, onClose: () -> Uni
             securePolicy = SecureFlagPolicy.SecureOn,
         ),
     ) {
+        val dialogWindow = (androidx.compose.ui.platform.LocalView.current.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+        val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+        androidx.compose.runtime.SideEffect {
+            dialogWindow?.setLayout(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
+        }
         var viewport by remember { mutableStateOf(IntSize.Zero) }
-        var transform by remember(stream.id, viewport) { mutableStateOf(VideoTransform()) }
+        var transform by remember(stream.id, viewport, configuration.orientation) { mutableStateOf(VideoTransform()) }
         var fill by remember(stream.id) { mutableStateOf(false) }
         Column(Modifier.fillMaxSize().background(Color.Black).safeDrawingPadding()) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 TextButton(onClick = onClose) { Text("Close") }
+                if (onToggleAudio != null) TextButton(onClick = onToggleAudio) {
+                    Text(if (audioMuted) "Unmute share audio" else "Mute share audio")
+                }
                 TextButton(onClick = { fill = !fill; transform = VideoTransform() }) {
                     Text(if (fill) "Fit entire video" else "Fill screen")
                 }
             }
             Box(
-                Modifier.weight(1f).fillMaxWidth().clipToBounds()
+                Modifier.weight(1f).fillMaxWidth().clipToBounds().then(Modifier.testTag("stream-viewport"))
                     .onSizeChanged { viewport = it }
                     .pointerInput(stream.id, viewport) {
                         detectTransformGestures { _, pan, zoom, _ ->
@@ -98,8 +107,8 @@ internal fun FullscreenStream(room: Room, stream: LiveStream, onClose: () -> Uni
                         }
                     },
             ) {
-                VideoStreamView(
-                    room, stream.track,
+                stream.track?.let { track -> VideoStreamView(
+                    room, track,
                     Modifier.fillMaxSize().graphicsLayer {
                         scaleX = transform.scale
                         scaleY = transform.scale
@@ -107,7 +116,7 @@ internal fun FullscreenStream(room: Room, stream: LiveStream, onClose: () -> Uni
                         translationY = transform.y
                     },
                     fill = fill,
-                )
+                ) }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 TextButton(onClick = {

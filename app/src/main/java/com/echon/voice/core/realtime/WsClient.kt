@@ -3,6 +3,9 @@ package com.echon.voice.core.realtime
 import com.echon.voice.core.di.ApplicationScope
 import com.echon.voice.core.network.ApiConfig
 import com.echon.voice.core.network.EchonApi
+import com.echon.voice.core.network.SessionStore
+import com.echon.voice.core.network.apiCall
+import com.echon.voice.core.network.ApiException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.CompletableDeferred
@@ -38,6 +41,7 @@ import javax.inject.Singleton
 class WsClient @Inject constructor(
     private val api: EchonApi,
     private val client: OkHttpClient,
+    private val session: SessionStore,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     private val _events = MutableSharedFlow<WsEvent>(extraBufferCapacity = 512)
@@ -85,13 +89,14 @@ class WsClient @Inject constructor(
 
     private suspend fun loop() {
         while (currentCoroutineContext().isActive) {
-            val closed = CompletableDeferred<Unit>()
+            val closed = CompletableDeferred<Boolean>()
+            val sessionGeneration = session.generation
             val opened = CompletableDeferred<Unit>()
             val incoming = Channel<Unit>(Channel.CONFLATED)
             var connection: WebSocket? = null
             val connectionJob = currentCoroutineContext()[Job]!!
             try {
-                val ticket = api.wsTicket().ticket
+                val ticket = apiCall { api.wsTicket() }.ticket
                 // Percent-encode the ticket so reserved characters (+, /, =) in a
                 // non-URL-safe token can't corrupt the query string.
                 val encodedTicket = java.net.URLEncoder.encode(ticket, "UTF-8")
@@ -100,28 +105,35 @@ class WsClient @Inject constructor(
                     .build()
                 connection = client.newWebSocket(request, listener(closed, opened, incoming, connectionJob))
                 socket = connection
-                coroutineScope {
+                val revoked = coroutineScope {
                     val heartbeat = launch {
                         try {
                             maintainWsHeartbeat(opened, incoming) {
                                 connection.send(EchonJson.encodeToString(mapOf("type" to "ping")))
                             }
                         } catch (_: TimeoutCancellationException) {
-                            closed.complete(Unit)
+                            closed.complete(false)
                         } catch (e: CancellationException) {
                             throw e
                         } catch (_: Exception) {
-                            closed.complete(Unit)
+                            closed.complete(false)
                         }
                     }
                     try { closed.await() } finally { heartbeat.cancel() }
                 }
+                if (revoked) {
+                    revokeSession(sessionGeneration)
+                    return
+                }
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: ApiException.Unauthorized) {
+                revokeSession(sessionGeneration)
+                return
             } catch (e: Exception) {
                 // Ticket fetch / connect failure → fall through to backoff.
             } finally {
-                closed.complete(Unit)
+                closed.complete(false)
                 incoming.close()
                 connection?.cancel() // Includes cancellation during the HTTP handshake.
                 if (socket === connection) socket = null
@@ -133,7 +145,7 @@ class WsClient @Inject constructor(
     }
 
     private fun listener(
-        closed: CompletableDeferred<Unit>,
+        closed: CompletableDeferred<Boolean>,
         opened: CompletableDeferred<Unit>,
         incoming: Channel<Unit>,
         connectionJob: Job,
@@ -162,16 +174,25 @@ class WsClient @Inject constructor(
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-            webSocket.close(1000, null)
-            if (!closed.isCompleted) closed.complete(Unit)
+            webSocket.close(code, null)
+            if (connectionJob.isActive && !closed.isCompleted) closed.complete(code == 4001)
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            if (!closed.isCompleted) closed.complete(Unit)
+            if (!closed.isCompleted) closed.complete(response?.code == 401)
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-            if (!closed.isCompleted) closed.complete(Unit)
+            if (!closed.isCompleted) closed.complete(code == 4001)
+        }
+    }
+
+    private fun revokeSession(generation: Long) {
+        // An old socket must never sign out a newly signed-in account.
+        try {
+            if (session.clearIfCurrent(generation)) session.signalUnauthorized()
+        } catch (_: com.echon.voice.core.storage.TokenStorageException) {
+            // The storage observer already locks the app and clears account state.
         }
     }
 

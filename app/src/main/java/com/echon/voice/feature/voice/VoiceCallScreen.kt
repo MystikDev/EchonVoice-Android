@@ -82,6 +82,10 @@ class VoiceCallViewModel @Inject constructor(
     val isMuted = store.isMuted
     val isCameraOn = store.isCameraOn
     val liveStreams = store.liveStreams
+    val watchedStreamIds = store.watchedStreamIds
+    val mutedStreamIds = store.mutedStreamIds
+    fun watchStream(id: String, watch: Boolean) = store.watchStream(id, watch)
+    fun muteStream(id: String, mute: Boolean) = store.muteStream(id, mute)
     val publishError = store.publishError
     val room: Room? get() = store.room
 
@@ -105,6 +109,8 @@ fun VoiceCallScreen(
     val isMuted by viewModel.isMuted.collectAsStateWithLifecycle()
     val isCameraOn by viewModel.isCameraOn.collectAsStateWithLifecycle()
     val streams by viewModel.liveStreams.collectAsStateWithLifecycle()
+    val watched by viewModel.watchedStreamIds.collectAsStateWithLifecycle()
+    val mutedStreams by viewModel.mutedStreamIds.collectAsStateWithLifecycle()
     val publishError by viewModel.publishError.collectAsStateWithLifecycle()
 
     var denied by remember { mutableStateOf(false) }
@@ -144,8 +150,11 @@ fun VoiceCallScreen(
     var expandedId by rememberSaveable { mutableStateOf<String?>(null) }
     val expanded = streams.firstOrNull { it.id == expandedId }
     val activeRoom = viewModel.room
-    if (expanded != null && activeRoom != null) {
-        FullscreenStream(activeRoom, expanded) { expandedId = null }
+    if (expanded?.track != null && activeRoom != null) {
+        FullscreenStream(activeRoom, expanded, onClose = { expandedId = null },
+            audioMuted = expanded.id in mutedStreams,
+            onToggleAudio = if (expanded.isScreen) ({ viewModel.muteStream(expanded.id, expanded.id !in mutedStreams) }) else null,
+        )
     }
     LaunchedEffect(streams) {
         if (expandedId != null && expanded == null) expandedId = null
@@ -190,15 +199,21 @@ fun VoiceCallScreen(
                     ) {
                         items(streams, key = { it.id }) { stream ->
                             Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                                if (stream.id != expandedId) VideoStreamView(
-                                    room = room,
-                                    track = stream.track,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(16f / 9f)
-                                        .clip(RoundedCornerShape(12.dp)),
+                                StreamViewingControls(
+                                    stream = stream,
+                                    watching = !stream.isScreen || stream.id in watched,
+                                    audioMuted = stream.id in mutedStreams,
+                                    watch = { viewModel.watchStream(stream.id, it) },
+                                    mute = { viewModel.muteStream(stream.id, it) },
+                                    fullscreen = { expandedId = stream.id },
                                 )
-                                TextButton(onClick = { expandedId = stream.id }) { Text("Watch full screen") }
+                                val track = stream.track
+                                if ((!stream.isScreen || stream.id in watched) && stream.id != expandedId && track != null) {
+                                    VideoStreamView(
+                                        room = room, track = track,
+                                        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)),
+                                    )
+                                }
                                 Text(
                                     "${stream.title} · ${if (stream.isScreen) "screen" else "camera"}",
                                     style = MaterialTheme.typography.labelSmall,
@@ -309,6 +324,24 @@ internal fun AudioOutputControl(audio: CallAudioState, select: (AudioDevice?) ->
                     text = { Text(device.name) },
                     onClick = { select(device); expanded = false },
                 )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun StreamViewingControls(
+    stream: LiveStream, watching: Boolean, audioMuted: Boolean,
+    watch: (Boolean) -> Unit, mute: (Boolean) -> Unit, fullscreen: () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+        if (stream.isScreen) TextButton(onClick = { watch(!watching) }) {
+            Text(if (watching) "Stop watching" else "Watch screen share")
+        }
+        if (watching) {
+            TextButton(onClick = fullscreen, enabled = stream.track != null) { Text("Watch full screen") }
+            if (stream.isScreen) TextButton(onClick = { mute(!audioMuted) }) {
+                Text(if (audioMuted) "Unmute share audio" else "Mute share audio")
             }
         }
     }

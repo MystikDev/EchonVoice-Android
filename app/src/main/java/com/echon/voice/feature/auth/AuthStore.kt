@@ -108,9 +108,9 @@ class AuthStore @Inject constructor(
      * Registration responds with a live session; logging in again would be
      * refused until the email is verified, so adopt this session directly.
      */
-    suspend fun register(email: String, username: String, password: String, dateOfBirth: String) {
+    suspend fun register(email: String, username: String, password: String, dateOfBirth: String, captchaToken: String? = null) {
         val response = apiCall {
-            api.register(RegisterRequest(email = email, username = username, password = password, dateOfBirth = dateOfBirth))
+            api.register(RegisterRequest(email = email, username = username, password = password, dateOfBirth = dateOfBirth, captchaToken = captchaToken))
         }
         apiCall { storeSession(response) }
         refreshMe()

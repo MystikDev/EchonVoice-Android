@@ -58,7 +58,7 @@ data class LiveStream(
     val id: String,
     val title: String,
     val isScreen: Boolean,
-    val track: VideoTrack,
+    val track: VideoTrack?,
 )
 
 /**
@@ -88,6 +88,21 @@ class VoiceCallStore @Inject constructor(
     fun selectAudioDevice(device: AudioDevice?) {
         try { audioRouting?.select(device) }
         catch (_: Exception) { _publishError.value = "Couldn't change audio output. Try again." }
+    }
+
+    private val _watchedStreamIds = MutableStateFlow<Set<String>>(emptySet())
+    val watchedStreamIds = _watchedStreamIds.asStateFlow()
+    private val _mutedStreamIds = MutableStateFlow<Set<String>>(emptySet())
+    val mutedStreamIds = _mutedStreamIds.asStateFlow()
+
+    fun watchStream(id: String, watch: Boolean) {
+        _watchedStreamIds.value = if (watch) _watchedStreamIds.value + id else _watchedStreamIds.value - id
+        room?.let { sync(it) }
+    }
+
+    fun muteStream(id: String, mute: Boolean) {
+        _mutedStreamIds.value = if (mute) _mutedStreamIds.value + id else _mutedStreamIds.value - id
+        room?.let { sync(it) }
     }
 
     private val _isMuted = MutableStateFlow(false)
@@ -183,7 +198,7 @@ class VoiceCallStore @Inject constructor(
                         sync(room)
                     }
                 }
-                room.connect(grant.livekitUrl, grant.token)
+                room.connect(grant.livekitUrl, grant.token, io.livekit.android.ConnectOptions(autoSubscribe = false))
                 currentCoroutineContext().ensureActive()
                 check(room.localParticipant.setMicrophoneEnabled(true)) { "Microphone publication failed" }
                 currentCoroutineContext().ensureActive()
@@ -280,6 +295,10 @@ class VoiceCallStore @Inject constructor(
         }
     }
 
+    fun revokeChannel(channelId: String) {
+        if (activeChannelId == channelId) leave()
+    }
+
     fun leave() {
         val channelId = activeChannelId
         // Stop capture NOW, even if the server is unreachable.
@@ -341,6 +360,8 @@ class VoiceCallStore @Inject constructor(
         activeChannelId = null
         _participants.value = emptyList()
         _liveStreams.value = emptyList()
+        _watchedStreamIds.value = emptySet()
+        _mutedStreamIds.value = emptySet()
         _isCameraOn.value = false
         _isMuted.value = false
         cameraPosition = CameraPosition.FRONT
@@ -369,7 +390,12 @@ class VoiceCallStore @Inject constructor(
             }
         }
         _participants.value = all
-        _liveStreams.value = collectLiveStreams(room)
+        val streams = collectLiveStreams(room)
+        val ids = streams.map { it.id }.toSet()
+        _watchedStreamIds.value = _watchedStreamIds.value.intersect(ids)
+        _mutedStreamIds.value = _mutedStreamIds.value.intersect(ids)
+        _liveStreams.value = streams
+        applyStreamSubscriptions(room)
     }
 
     /** Every active camera/screen stream — local first, then remotes by identity. */
@@ -388,15 +414,37 @@ class VoiceCallStore @Inject constructor(
                 val baseName = remote.name?.takeIf { it.isNotBlank() }
                     ?: identity.removeSuffix(":screen").take(8)
                 remote.trackPublications.values.forEach { pub ->
-                    val track = pub.track as? VideoTrack ?: return@forEach
-                    if (pub.muted) return@forEach // a muted camera is a frozen frame, not a stream
+                    val track = pub.track as? VideoTrack
+                    if (pub.muted || pub.kind != Track.Kind.VIDEO) return@forEach
                     val isScreen = pub.source == Track.Source.SCREEN_SHARE || identity.endsWith(":screen")
                     val isCamera = pub.source == Track.Source.CAMERA
-                    if (isScreen || isCamera) {
+                    if (isScreen || (isCamera && track != null)) {
                         add(LiveStream(id = "$identity-${pub.sid}", title = baseName, isScreen = isScreen, track = track))
                     }
                 }
             }
+    }
+
+    private fun applyStreamSubscriptions(room: Room) {
+        room.remoteParticipants.values.forEach { remote ->
+            val identity = remote.identity?.value.orEmpty()
+            val screenIds = remote.trackPublications.values.filter {
+                it.kind == Track.Kind.VIDEO && (it.source == Track.Source.SCREEN_SHARE || identity.endsWith(":screen"))
+            }.map { "$identity-${it.sid}" }
+            remote.trackPublications.values.forEach { publication ->
+                val pub = publication as? io.livekit.android.room.track.RemoteTrackPublication ?: return@forEach
+                val screenAudio = pub.source == Track.Source.SCREEN_SHARE_AUDIO ||
+                    (identity.endsWith(":screen") && pub.kind == Track.Kind.AUDIO)
+                val screenVideo = pub.kind == Track.Kind.VIDEO &&
+                    (pub.source == Track.Source.SCREEN_SHARE || identity.endsWith(":screen"))
+                val desired = shouldReceiveTrack(
+                    screenVideo, screenAudio, "$identity-${pub.sid}", screenIds,
+                    _watchedStreamIds.value, _mutedStreamIds.value,
+                )
+                if (screenAudio) (pub.track as? io.livekit.android.room.track.RemoteAudioTrack)?.setVolume(if (desired) 1.0 else 0.0)
+                if (pub.isDesired != desired) pub.setSubscribed(desired)
+            }
+        }
     }
 
     private fun toCallParticipant(participant: Participant, isLocal: Boolean): CallParticipant {
@@ -422,4 +470,14 @@ class VoiceCallStore @Inject constructor(
             hasCamera = hasCamera,
         )
     }
+}
+
+/** Screen audio follows opt-in viewing and its own mute; ordinary voice/camera stays subscribed. */
+internal fun shouldReceiveTrack(
+    screenVideo: Boolean, screenAudio: Boolean, publicationId: String,
+    screenIds: List<String>, watched: Set<String>, muted: Set<String>,
+): Boolean = when {
+    screenVideo -> publicationId in watched
+    screenAudio -> screenIds.any { it in watched && it !in muted }
+    else -> true
 }

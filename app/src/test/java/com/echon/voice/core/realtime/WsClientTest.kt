@@ -22,6 +22,44 @@ import org.junit.Test
 import java.lang.reflect.Proxy
 
 class WsClientTest {
+    @Test fun revokedCloseAndRejectedHandshakeClearSessionAndNeverReconnect() = runBlocking {
+        for (handshakeRejected in listOf(false, true)) {
+            val server = MockWebServer()
+            if (handshakeRejected) server.enqueue(MockResponse().setResponseCode(401))
+            else server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) { webSocket.close(4001, "session revoked") }
+            }))
+            server.start()
+            val client = OkHttpClient.Builder().addInterceptor { chain ->
+                chain.proceed(chain.request().newBuilder().url(server.url("/v1/ws")).build())
+            }.build()
+            val tickets = java.util.concurrent.atomic.AtomicInteger()
+            val api = Proxy.newProxyInstance(EchonApi::class.java.classLoader, arrayOf(EchonApi::class.java)) { _, _, _ ->
+                tickets.incrementAndGet(); TicketResponse("ticket")
+            } as EchonApi
+            val storage = object : com.echon.voice.core.storage.TokenStorage {
+                override var accessToken: String? = "access"
+                override var refreshToken: String? = "refresh"
+                override fun clear() { accessToken = null; refreshToken = null }
+            }
+            val session = com.echon.voice.core.network.SessionStore(storage)
+            val revoked = CompletableDeferred<Unit>()
+            val consumer = launch(start = CoroutineStart.UNDISPATCHED) { session.unauthorized.collect { revoked.complete(Unit) } }
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val ws = WsClient(api, client, session, scope)
+            try {
+                ws.start()
+                withTimeout(5_000) { revoked.await() }
+                assertFalse(session.hasSession); assertNull(storage.accessToken); assertNull(storage.refreshToken)
+                kotlinx.coroutines.delay(5_200) // Longer than the normal reconnect backoff.
+                assertEquals(1, tickets.get()); assertEquals(1, server.requestCount)
+            } finally {
+                ws.stop(); consumer.cancel(); scope.cancel()
+                client.dispatcher.executorService.shutdown(); client.connectionPool.evictAll(); server.shutdown()
+            }
+        }
+    }
+
     @Test fun initialReadyAndPresenceArriveAndJsonHeartbeatReachesServer() = runBlocking {
         val server = MockWebServer()
         val ping = CompletableDeferred<String>()
@@ -44,7 +82,11 @@ class WsClientTest {
             TicketResponse("test-ticket")
         } as EchonApi
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        val ws = WsClient(api, client, scope)
+        val ws = WsClient(api, client, com.echon.voice.core.network.SessionStore(object : com.echon.voice.core.storage.TokenStorage {
+            override var accessToken: String? = "access"
+            override var refreshToken: String? = "refresh"
+            override fun clear() { accessToken = null; refreshToken = null }
+        }), scope)
         val ready = CompletableDeferred<Unit>()
         val presence = CompletableDeferred<WsEvent.PresenceChanged>()
         val consumer = launch(start = CoroutineStart.UNDISPATCHED) {

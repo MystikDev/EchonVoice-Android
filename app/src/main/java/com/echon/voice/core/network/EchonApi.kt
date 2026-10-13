@@ -49,6 +49,10 @@ interface EchonApi {
     suspend fun login(@Body body: LoginRequest): LoginResponse
 
     @Headers("X-Echon-No-Auth: true")
+    @GET("v1/auth/captcha")
+    suspend fun captchaConfig(): com.echon.voice.model.CaptchaConfig
+
+    @Headers("X-Echon-No-Auth: true")
     @POST("v1/auth/register")
     suspend fun register(@Body body: RegisterRequest): LoginResponse
 

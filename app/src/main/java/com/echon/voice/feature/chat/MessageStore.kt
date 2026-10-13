@@ -28,6 +28,16 @@ class MessageStore(
     val channelId: String,
     val kind: ChatChannelKind,
 ) {
+    @Volatile private var revoked = false
+    private val _accessRevoked = MutableStateFlow(false)
+    val accessRevoked = _accessRevoked.asStateFlow()
+
+    fun revoke() {
+        revoked = true
+        _accessRevoked.value = true
+        _messages.value = emptyList()
+    }
+
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
     val messages: StateFlow<List<Message>> = _messages.asStateFlow()
 
@@ -39,18 +49,23 @@ class MessageStore(
 
     private var loadingInitial = false
 
-    private suspend fun fetch(before: String?): List<Message> =
+    private suspend fun fetch(before: String?): List<Message> = try {
         if (kind == ChatChannelKind.DM) {
             apiCall { api.dmMessages(channelId, before, PAGE) }.messages
         } else {
             apiCall { api.channelMessages(channelId, before, PAGE) }.messages
         }
+    } catch (e: com.echon.voice.core.network.ApiException.Http) {
+        if (e.status == 403 || e.status == 404) revoke()
+        throw e
+    }
 
     suspend fun loadInitial() {
-        if (_messages.value.isNotEmpty() || loadingInitial) return
+        if (revoked || _messages.value.isNotEmpty() || loadingInitial) return
         loadingInitial = true
         try {
             val page = fetch(before = null)
+            if (revoked) return
             _messages.value = page
             hasMoreHistory = page.size >= PAGE
         } finally {
@@ -59,11 +74,12 @@ class MessageStore(
     }
 
     suspend fun loadOlder() {
-        if (!hasMoreHistory || _loadingOlder.value || loadingInitial) return
+        if (revoked || !hasMoreHistory || _loadingOlder.value || loadingInitial) return
         val oldest = _messages.value.firstOrNull { !it.isLocalEcho } ?: return
         _loadingOlder.value = true
         try {
             val page = fetch(before = oldest.id)
+            if (revoked) return
             val known = _messages.value.mapTo(HashSet()) { it.id }
             _messages.update { page.filter { m -> m.id !in known } + it }
             hasMoreHistory = page.size >= PAGE
@@ -87,6 +103,7 @@ class MessageStore(
         replyToId: String? = null,
         attachments: List<OutgoingAttachment>? = null,
     ) {
+        if (revoked) return
         val text = normalizeMessageText(content)
         if (text.isBlank() && attachments.isNullOrEmpty()) return
 
@@ -111,6 +128,7 @@ class MessageStore(
             } else {
                 apiCall { api.sendChannelMessage(channelId, SendMessageRequest(text, replyToId, attachments)) }
             }
+            if (revoked) return
             _messages.update { list ->
                 val idx = list.indexOfFirst { it.id == localId }
                 when {
@@ -120,9 +138,12 @@ class MessageStore(
                 }
             }
         } catch (e: Exception) {
+            if (revoked) return
             _messages.update { list ->
                 val idx = list.indexOfFirst { it.id == localId }
-                if (idx >= 0) list.toMutableList().also { it[idx] = list[idx].copy(sendFailed = true) } else list
+                if (idx >= 0) list.toMutableList().also { it[idx] = list[idx].copy(sendFailed = true, sendError =
+                    if ((e as? com.echon.voice.core.network.ApiException.Http)?.let { it.code == "invalid_attachment" || it.message == "invalid_attachment" } == true)
+                        "Attachment rejected. Discard this message and upload the file again." else null) } else list
             }
         }
     }
@@ -145,6 +166,7 @@ class MessageStore(
     }
 
     suspend fun edit(messageId: String, content: String) {
+        if (revoked) return
         val text = normalizeMessageText(content)
         if (text.isBlank()) return
         val previous = _messages.value.firstOrNull { it.id == messageId } ?: return
@@ -202,6 +224,7 @@ class MessageStore(
     // --- Realtime merges ---
 
     fun applyRemote(incoming: Message) {
+        if (revoked) return
         _messages.update { list ->
             val byId = list.indexOfFirst { it.id == incoming.id }
             when {
@@ -217,6 +240,7 @@ class MessageStore(
     }
 
     fun applyUpdate(incoming: Message) {
+        if (revoked) return
         _messages.update { list -> list.map { if (it.id == incoming.id) incoming else it } }
     }
 
@@ -238,10 +262,14 @@ class ChatStores @Inject constructor(
 ) {
     private val byChannel = ConcurrentHashMap<String, MessageStore>()
 
-    fun clear() { byChannel.clear() }
+    fun clear() { byChannel.values.forEach { it.revoke() }; byChannel.clear() }
+
+    fun revoke(channelId: String) { byChannel.remove(channelId)?.revoke() }
 
     fun store(channelId: String, kind: ChatChannelKind = ChatChannelKind.SERVER): MessageStore =
-        byChannel.getOrPut(channelId) { MessageStore(api, channelId, kind) }
+        byChannel.compute(channelId) { _, existing ->
+            existing?.takeUnless { it.accessRevoked.value } ?: MessageStore(api, channelId, kind)
+        }!!
 
     fun applyDeleteEverywhere(messageId: String) {
         byChannel.values.forEach { it.applyDelete(messageId) }

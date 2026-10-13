@@ -88,12 +88,14 @@ class ProfileEditViewModel @Inject constructor(
                     val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
                     val part = MultipartBody.Part.createFormData("file", "avatar.${mime.substringAfter('/', "jpg")}", bytes.toRequestBody(mime.toMediaTypeOrNull()))
                     val purpose = "avatar".toRequestBody("text/plain".toMediaTypeOrNull())
-                    apiCall { api.upload(part, purpose) }.url
+                    apiCall { api.upload(part, purpose) }.url.also { require(com.echon.voice.core.util.isEchonUploadUrl(it)) }
                 }
             }.onSuccess { newAvatarUrl = it }.onFailure { status = "Avatar upload failed" }
             busy = false
         }
     }
+
+    fun clearAvatar() { newAvatarUrl = "" }
 
     fun save(onDone: () -> Unit) {
         viewModelScope.launch {
@@ -131,6 +133,7 @@ fun ProfileEditScreen(onBack: () -> Unit, viewModel: ProfileEditViewModel = hilt
                 OutlinedButton(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !viewModel.busy) {
                     Text("Change avatar")
                 }
+                TextButton(onClick = viewModel::clearAvatar, enabled = !viewModel.busy) { Text("Remove") }
             }
             OutlinedTextField(value = viewModel.about, onValueChange = { viewModel.about = it }, label = { Text("About") }, modifier = Modifier.fillMaxWidth())
             Text("Who can DM you", style = MaterialTheme.typography.titleSmall)

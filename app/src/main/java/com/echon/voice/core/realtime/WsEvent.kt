@@ -2,6 +2,7 @@ package com.echon.voice.core.realtime
 
 import com.echon.voice.core.network.EchonJson
 import com.echon.voice.model.Message
+import com.echon.voice.model.Channel
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -15,6 +16,8 @@ import kotlinx.serialization.json.JsonPrimitive
  * the client — the tolerant-enum discipline carried over from iOS.
  */
 sealed interface WsEvent {
+    data class ChannelUpserted(val channel: Channel) : WsEvent
+    data class ChannelDeleted(val channelId: String, val serverId: String?) : WsEvent
     data object Ready : WsEvent
     data class MessageNew(val message: Message) : WsEvent
     data class MessageUpdated(val message: Message) : WsEvent
@@ -32,6 +35,9 @@ sealed interface WsEvent {
     data object SocketConnected : WsEvent
     data object SocketDisconnected : WsEvent
 }
+
+@Serializable
+private data class ChannelDeletedPayload(val channelId: String? = null, val serverId: String? = null)
 
 @Serializable
 private data class DeletedPayload(val messageId: String? = null, val id: String? = null, val channelId: String? = null)
@@ -59,6 +65,12 @@ object WsEventParser {
 
         return when (name) {
             "ready" -> WsEvent.Ready
+            "channel-created", "channel-updated" -> payload(Channel.serializer())
+                ?.takeIf { it.id.isNotBlank() && !it.serverId.isNullOrBlank() }
+                ?.let { WsEvent.ChannelUpserted(it) } ?: WsEvent.Unknown(name)
+            "channel-deleted" -> payload(ChannelDeletedPayload.serializer())
+                ?.takeIf { !it.channelId.isNullOrBlank() }
+                ?.let { WsEvent.ChannelDeleted(it.channelId!!, it.serverId) } ?: WsEvent.Unknown(name)
             "message-new", "message.created" ->
                 payload(Message.serializer())?.let { WsEvent.MessageNew(it) } ?: WsEvent.Unknown(name)
             "message-updated", "message.updated" ->
