@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.safeDrawing
@@ -201,7 +202,9 @@ fun VoiceCallScreen(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(if (streams.size > 1) 1.2f else 0.8f),
+                            .then(if (streams.any { !it.isScreen || it.id in watched })
+                                Modifier.weight(if (streams.size > 1) 1.2f else 0.8f)
+                            else Modifier.heightIn(max = 200.dp)),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         items(streams, key = { it.id }) { stream ->

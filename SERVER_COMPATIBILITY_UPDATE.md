@@ -1,4 +1,4 @@
-# Android 2.0.29: server compatibility, signup, and screen sharing
+# Android 2.0.30: server compatibility, signup, and screen sharing
 
 Source reviewed October 13, 2026: main client `pkapral2-droid/echon-rs`, commit
 `e4d990469d7a39dd75353c74209802c8c178bd14`. Its LiveKit server update is
@@ -82,7 +82,9 @@ screen-audio sources and the desktop `:screen` participant convention are handle
 Preferences clear at call teardown and when a publication ends. Cameras and voice
 remain subscribed normally.
 
-Fullscreen dialogs use the whole current window. Rotation rebuilds the video
+Fullscreen video uses the whole current window, with controls overlaid rather
+than reducing video height. Tap the video to hide/show controls. Closed shares use
+compact cards without reserving video-stage space. Rotation rebuilds the video
 renderer and resets transforms for the new viewport; fit/fill scaling applies in
 both orientations. Zoom and Reset remain available. The launcher uses the current
 main desktop client's existing Android icon exports, with adaptive safe-area

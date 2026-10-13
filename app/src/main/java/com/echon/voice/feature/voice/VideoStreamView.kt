@@ -2,6 +2,7 @@ package com.echon.voice.feature.voice
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -88,46 +92,66 @@ internal fun FullscreenStream(room: Room, stream: LiveStream, audioMuted: Boolea
         var viewport by remember { mutableStateOf(IntSize.Zero) }
         var transform by remember(stream.id, viewport, configuration.orientation) { mutableStateOf(VideoTransform()) }
         var fill by remember(stream.id) { mutableStateOf(false) }
-        Column(Modifier.fillMaxSize().background(Color.Black).safeDrawingPadding()) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(onClick = onClose) { Text("Close") }
-                if (onToggleAudio != null) TextButton(onClick = onToggleAudio) {
-                    Text(if (audioMuted) "Unmute share audio" else "Mute share audio")
-                }
-                TextButton(onClick = { fill = !fill; transform = VideoTransform() }) {
-                    Text(if (fill) "Fit entire video" else "Fill screen")
-                }
-            }
+        var controlsVisible by remember(stream.id) { mutableStateOf(true) }
+        // Controls overlay the video instead of reducing its available height,
+        // especially on a landscape phone. Tap the video to hide/show them.
+        Box(Modifier.fillMaxSize().background(Color.Black).safeDrawingPadding()) {
             Box(
-                Modifier.weight(1f).fillMaxWidth().clipToBounds().then(Modifier.testTag("stream-viewport"))
+                Modifier.fillMaxSize().clipToBounds().testTag("stream-viewport")
                     .onSizeChanged { viewport = it }
+                    .semantics {
+                        contentDescription = "Screen share video"
+                        onClick(label = "Toggle video controls") { controlsVisible = !controlsVisible; true }
+                    }
+                    .pointerInput(stream.id) {
+                        detectTapGestures(onTap = { controlsVisible = !controlsVisible })
+                    }
                     .pointerInput(stream.id, viewport) {
                         detectTransformGestures { _, pan, zoom, _ ->
                             transform = transform.change(zoom, pan.x, pan.y, viewport.width, viewport.height)
                         }
                     },
             ) {
-                stream.track?.let { track -> VideoStreamView(
-                    room, track,
-                    Modifier.fillMaxSize().graphicsLayer {
-                        scaleX = transform.scale
-                        scaleY = transform.scale
-                        translationX = transform.x
-                        translationY = transform.y
-                    },
-                    fill = fill,
-                ) }
+                stream.track?.let { track ->
+                    VideoStreamView(
+                        room, track,
+                        Modifier.fillMaxSize().graphicsLayer {
+                            scaleX = transform.scale
+                            scaleY = transform.scale
+                            translationX = transform.x
+                            translationY = transform.y
+                        },
+                        fill = fill,
+                    )
+                }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                TextButton(onClick = {
-                    transform = transform.change(1 / 1.25f, 0f, 0f, viewport.width, viewport.height)
-                }, enabled = transform.scale > 1f) { Text("Zoom out") }
-                TextButton(onClick = { transform = VideoTransform(); fill = false }) { Text("Reset") }
-                TextButton(onClick = {
-                    transform = transform.change(1.25f, 0f, 0f, viewport.width, viewport.height)
-                }, enabled = transform.scale < 4f) { Text("Zoom in") }
+            if (controlsVisible) {
+                Row(
+                    Modifier.align(androidx.compose.ui.Alignment.TopCenter).fillMaxWidth().background(Color.Black.copy(alpha = 0.7f)),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    TextButton(onClick = onClose) { Text("Close") }
+                    if (onToggleAudio != null) TextButton(onClick = onToggleAudio) {
+                        Text(if (audioMuted) "Unmute share audio" else "Mute share audio")
+                    }
+                    TextButton(onClick = { fill = !fill; transform = VideoTransform() }) {
+                        Text(if (fill) "Fit entire video" else "Fill screen")
+                    }
+                }
+                Column(Modifier.align(androidx.compose.ui.Alignment.BottomCenter).fillMaxWidth().background(Color.Black.copy(alpha = 0.7f))) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        TextButton(onClick = {
+                            transform = transform.change(1 / 1.25f, 0f, 0f, viewport.width, viewport.height)
+                        }, enabled = transform.scale > 1f) { Text("Zoom out") }
+                        TextButton(onClick = { transform = VideoTransform(); fill = false }) { Text("Reset") }
+                        TextButton(onClick = {
+                            transform = transform.change(1.25f, 0f, 0f, viewport.width, viewport.height)
+                        }, enabled = transform.scale < 4f) { Text("Zoom in") }
+                    }
+                    Text(stream.title, color = Color.White, modifier = Modifier.padding(horizontal = 12.dp), maxLines = 1)
+                    Text("Tap video to hide controls", color = Color.LightGray, modifier = Modifier.padding(12.dp))
+                }
             }
-            Text(stream.title, color = Color.White, modifier = Modifier.padding(12.dp), maxLines = 1)
         }
     }
 }

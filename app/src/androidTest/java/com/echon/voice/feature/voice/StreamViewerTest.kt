@@ -49,6 +49,10 @@ class StreamViewerTest {
             compose.onNodeWithText("Fit entire video").assertIsDisplayed()
             compose.onNodeWithText("Reset").performClick()
             compose.onNodeWithText("Zoom out").assertIsNotEnabled()
+            compose.onNodeWithTag("stream-viewport").performClick()
+            compose.onNodeWithText("Zoom in").assertDoesNotExist()
+            compose.onNodeWithTag("stream-viewport").performClick()
+            compose.onNodeWithText("Zoom in").assertIsDisplayed()
             // ActivityScenario recreates the host. Set the test UI again after rotation,
             // just as the production host recomposes its saved stream selection.
             compose.activityRule.scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
@@ -59,6 +63,7 @@ class StreamViewerTest {
             val landscape = compose.onNodeWithTag("stream-viewport").fetchSemanticsNode().boundsInRoot
             org.junit.Assert.assertTrue("Fullscreen must become wider on landscape rotation", landscape.width > portrait.width)
             org.junit.Assert.assertTrue("Landscape must use the resized viewport", landscape.width > landscape.height)
+            org.junit.Assert.assertTrue("Controls must overlay video instead of shrinking its height", landscape.height > compose.activity.window.decorView.height * 0.75f)
             repeat(5) {
                 compose.onNodeWithText("Close").performClick()
                 compose.runOnIdle { visible.value = true }
