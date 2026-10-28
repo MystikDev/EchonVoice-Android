@@ -1,0 +1,63 @@
+{
+  "version_name": "2.0.32",
+  "version_code": 33,
+  "verified_at": "2026-10-28T14:45:17Z",
+  "source_commit": "857fde3d812acb616f61113751520ed1432e56f6",
+  "manifest_sync_commit": "490f355",
+  "release_url": "https://github.com/MystikDev/EchonVoice-Android/releases/tag/v2.0.32",
+  "workflow_url": "https://github.com/MystikDev/EchonVoice-Android/actions/runs/40702193426",
+  "release_workflow_attempt": 2,
+  "website_url": "https://echon-voice.com/android.html",
+  "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
+  "sha256": "451fc685c115e361f77e0102dc7542746e05e77c3ef38459267be0dcfd5994ef",
+  "signer_certificate_sha256": "bdfbbbf992e30b1b5bf07fdcedc09133c1db684623aab457c2ef95ecc5e6b836",
+  "changes": [
+    "Real-time DM and channel refresh, post-Ready subscription rejoin, and bounded foreground reconciliation.",
+    "Uncropped chat images and full-screen image viewing.",
+    "Tappable HTTP(S) links and YouTube previews opening YouTube or the browser.",
+    "@ mention suggestions from members or DM participants."
+  ],
+  "local_validation": {
+    "direct_unit_tests": 98,
+    "direct_unit_tests_skipped": 1,
+    "play_unit_tests": 86,
+    "play_unit_tests_skipped": 1,
+    "unit_test_failures": 0,
+    "direct_and_play_debug_lint_passed": true,
+    "direct_and_play_release_lint_passed": true,
+    "direct_and_play_minified_release_builds_passed": true,
+    "firebase_disabled_for_local_validation": true
+  },
+  "required_release_jobs_passed": 9,
+  "emulator_configurations_passed": 6,
+  "emulator_test_executions_passed": 84,
+  "minified_release_startup_checks_passed": 6,
+  "release_retry": {
+    "reason": "Attempt 1 API 35 voice audio-routing UI test timed out after 15000 ms. The same source commit passed API 35 in main validation.",
+    "action": "Re-ran only API 35 and dependent release unchanged on a fresh runner.",
+    "result": "All 14 instrumentation tests and minified startup passed on attempt 2."
+  },
+  "firebase_enabled_in_release": true,
+  "signature_continuity_verified": true,
+  "github_asset_digest_verified": true,
+  "public_manifest_hash_verified": true,
+  "github_provenance_and_source_commit_verified": true,
+  "provenance_verifier": "gh attestation verify with public bundle, exact workflow, source ref and source digest, and self-hosted runners denied; no stored credentials used.",
+  "website_download_verified": true,
+  "zip_16kb_alignment_verified": true,
+  "native_64bit_minimum_load_alignment_bytes": 16384,
+  "native_64bit_libraries_checked": 9,
+  "public_apk_signed_out_upgrade_from": "2.0.31 (32)",
+  "public_apk_in_place_upgrade_verified": true,
+  "original_install_time_preserved": true,
+  "public_apk_startup_verified_locally": true,
+  "local_upgrade_emulator": "Android 15 / API 35 / ARM64; temporary read-only echon_test instance.",
+  "physical_device_acceptance_tested": false,
+  "production_fcm_delivery_tested": false,
+  "authenticated_chat_media_and_reconnect_acceptance_tested": false,
+  "remaining_acceptance": [
+    "Real-device DM/channel delivery and reconnect under weak networks.",
+    "Authenticated photo, video-link, YouTube and @ mention behavior.",
+    "Production push delivery, signup/authenticated migration, audio/share-audio, Bluetooth and rotation."
+  ]
+}
