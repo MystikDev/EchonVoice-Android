@@ -71,6 +71,17 @@ class WsClient @Inject constructor(
         send(mapOf("type" to "channel:join", "channel_id" to channelId))
     }
 
+    /**
+     * Re-send every desired subscription after the server's `ready` frame.
+     * Sending these from [WebSocketListener.onOpen] is too early: the server has
+     * accepted the TCP/WebSocket handshake but has not registered the session yet.
+     */
+    fun rejoinAll() {
+        synchronized(joinedChannels) {
+            joinedChannels.forEach { send(mapOf("type" to "channel:join", "channel_id" to it)) }
+        }
+    }
+
     fun leave(channelId: String) {
         joinedChannels.remove(channelId)
         send(mapOf("type" to "channel:leave", "channel_id" to channelId))
@@ -157,14 +168,10 @@ class WsClient @Inject constructor(
             }
             socket = webSocket
             opened.complete(Unit)
-            // Surface connect first so stores can REST-reconcile dropped frames,
-            // then re-subscribe to every previously-joined channel.
+            // Surface connect so stores can REST-reconcile dropped frames.
+            // Subscriptions are deliberately re-sent only after `ready`; the
+            // server ignores channel:join frames during this handshake window.
             _events.tryEmit(WsEvent.SocketConnected)
-            synchronized(joinedChannels) {
-                joinedChannels.forEach {
-                    webSocket.send(EchonJson.encodeToString(mapOf("type" to "channel:join", "channel_id" to it)))
-                }
-            }
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {

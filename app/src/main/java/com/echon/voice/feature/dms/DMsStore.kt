@@ -41,13 +41,18 @@ class DMsStore @Inject constructor(
         return conversation
     }
 
-    /** Bump a conversation to the top when a new message arrives. */
-    fun touch(conversationId: String, at: String?) {
+    /**
+     * Bump a conversation to the top when a message arrives. Returns false when
+     * the event references a newly-created conversation that needs a REST refresh.
+     */
+    fun touch(conversationId: String, at: String?): Boolean {
+        if (_conversations.value.none { it.id == conversationId }) return false
         _conversations.update { list ->
             val idx = list.indexOfFirst { it.id == conversationId }
-            if (idx < 0) return@update list
+            if (idx < 0) return@update list // Concurrent list replacement; next refresh resolves it.
             val updated = list[idx].copy(lastMessageAt = at ?: list[idx].lastMessageAt)
             (listOf(updated) + list.filterIndexed { i, _ -> i != idx })
         }
+        return true
     }
 }

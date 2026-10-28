@@ -40,7 +40,7 @@ class DMsViewModel @Inject constructor(
     private val dms: DMsStore,
     blocks: BlocksStore,
     private val auth: AuthStore,
-    realtime: RealtimeStore,
+    private val realtime: RealtimeStore,
 ) : ViewModel() {
     val myId: String? get() = auth.currentUser.value?.id
     val presence = realtime.presence
@@ -54,8 +54,18 @@ class DMsViewModel @Inject constructor(
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    init { refresh() }
-    fun refresh() = viewModelScope.launch { runCatching { dms.load() } }
+    fun refresh() = viewModelScope.launch {
+        try {
+            dms.load()
+            // The server only streams a DM after its conversation id is joined.
+            // Refreshing the list may discover conversations created elsewhere.
+            realtime.joinDMChannels()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Socket Ready and the next tab visit retry.
+        }
+    }
 }
 
 @Composable
@@ -65,6 +75,10 @@ fun DMListScreen(
 ) {
     val conversations by viewModel.conversations.collectAsStateWithLifecycle()
     val presence by viewModel.presence.collectAsStateWithLifecycle()
+
+    // MainScaffold keeps this ViewModel alive while switching tabs, so init alone
+    // is insufficient: refresh and rejoin whenever the DMs tab re-enters composition.
+    androidx.compose.runtime.LaunchedEffect(viewModel) { viewModel.refresh().join() }
 
     if (conversations.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

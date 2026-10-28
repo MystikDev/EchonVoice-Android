@@ -11,6 +11,7 @@ import com.echon.voice.core.network.EchonApi
 import com.echon.voice.core.network.apiCall
 import com.echon.voice.core.realtime.RealtimeStore
 import com.echon.voice.feature.auth.AuthStore
+import com.echon.voice.feature.dms.DMsStore
 import com.echon.voice.feature.moderation.BlocksStore
 import com.echon.voice.model.ChatChannelKind
 import com.echon.voice.model.Message
@@ -20,12 +21,15 @@ import com.echon.voice.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -44,6 +48,7 @@ class ChatViewModel @Inject constructor(
     private val blocks: BlocksStore,
     private val api: EchonApi,
     private val servers: com.echon.voice.feature.servers.ServersStore,
+    private val dms: DMsStore,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -92,24 +97,67 @@ class ChatViewModel @Inject constructor(
     var uploading by mutableStateOf(false)
         private set
 
+    private var mentionCandidates: List<MentionCandidate> = emptyList()
+    private var currentMention: ActiveMention? = null
+    private var messageRefreshJob: Job? = null
+    var mentionSuggestions by mutableStateOf<List<MentionCandidate>>(emptyList())
+        private set
+    var mentionMenuVisible by mutableStateOf(false)
+        private set
+    var mentionLoading by mutableStateOf(false)
+        private set
+
     fun onEnter() {
         if (channelId in servers.revokedChannelIds.value) return
         realtime.channelOpened(channelId)
         loadMessages()
+        if (mentionCandidates.isEmpty()) loadMentionCandidates()
+        messageRefreshJob?.cancel()
+        messageRefreshJob = viewModelScope.launch {
+            // WebSocket delivery is intentionally lossy under server backpressure.
+            // While this conversation is visible, REST is the bounded fallback so
+            // a missed frame cannot leave the UI stale until process restart.
+            while (isActive) {
+                delay(MESSAGE_REFRESH_MS)
+                try { store.reconcileLatest() }
+                catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                catch (_: Exception) { /* The next interval or socket event retries. */ }
+            }
+        }
     }
 
-    fun onLeave() = realtime.channelClosed(channelId)
+    fun onLeave() {
+        messageRefreshJob?.cancel()
+        messageRefreshJob = null
+        realtime.channelClosed(channelId)
+    }
 
     fun onDraftChange(text: String) {
         draft = text
+        updateMentionSuggestions()
         if (text.isNotEmpty()) realtime.userIsTyping(channelId)
+    }
+
+    fun selectMention(candidate: MentionCandidate) {
+        val mention = currentMention ?: return
+        val username = candidate.user.username ?: return
+        draft = replaceActiveMention(draft, mention, username)
+        currentMention = null
+        mentionMenuVisible = false
+        mentionSuggestions = emptyList()
+        realtime.userIsTyping(channelId)
     }
 
     fun retryLoad() { if (store.messages.value.isEmpty()) loadMessages() else loadOlder() }
 
     fun loadMessages() = viewModelScope.launch {
         loadError = null
-        try { store.loadInitial() }
+        try {
+            // Unlike loadInitial(), reconcileLatest() also refreshes a cached
+            // conversation when the user returns to it after a missed WS frame.
+            store.reconcileLatest()
+            if (mentionCandidates.isEmpty()) setMentionCandidates(fallbackMentionCandidates())
+        }
         catch (e: kotlinx.coroutines.CancellationException) { throw e }
         catch (_: Exception) { loadError = "Couldn't load messages. Please retry." }
     }
@@ -128,6 +176,7 @@ class ChatViewModel @Inject constructor(
             viewModelScope.launch { store.edit(edit.id, text) }
             clearContext()
             draft = ""
+            dismissMentionMenu()
             return
         }
         if (draft.isBlank() && pending.isEmpty()) return
@@ -135,17 +184,24 @@ class ChatViewModel @Inject constructor(
         val reply = replyTarget?.id
         val attachments = pending.takeIf { it.isNotEmpty() }
         draft = ""
+        dismissMentionMenu()
         replyTarget = null
         pending = emptyList()
         viewModelScope.launch { store.send(text, auth.currentUser.value, reply, attachments) }
     }
 
     fun startReply(message: Message) { editTarget = null; replyTarget = message }
-    fun startEdit(message: Message) { replyTarget = null; editTarget = message; draft = message.content.orEmpty() }
+    fun startEdit(message: Message) {
+        replyTarget = null
+        editTarget = message
+        draft = message.content.orEmpty()
+        updateMentionSuggestions()
+    }
     fun clearContext() {
         replyTarget = null
         if (editTarget != null) draft = ""
         editTarget = null
+        updateMentionSuggestions()
     }
 
     fun react(message: Message, emoji: String) =
@@ -217,7 +273,86 @@ class ChatViewModel @Inject constructor(
     fun removePending(attachment: OutgoingAttachment) {
         pending = pending.filterNot { it.url == attachment.url }
     }
+
+    private fun loadMentionCandidates() = viewModelScope.launch {
+        mentionLoading = true
+        try {
+            val users = when (kind) {
+                ChatChannelKind.SERVER -> {
+                    val serverId = servers.channelsByServer.value.entries.firstNotNullOfOrNull { (id, channels) ->
+                        channels.firstOrNull { it.id == channelId }?.let { it.serverId ?: id }
+                    }
+                    serverId?.let { apiCall { api.serverMembers(it) }.members }
+                        ?.map { MentionCandidate(it.user, it.displayName) }
+                        .orEmpty()
+                }
+                ChatChannelKind.DM -> {
+                    var conversation = dms.conversations.value.firstOrNull { it.id == channelId }
+                    if (conversation == null) {
+                        runCatching { dms.load() }
+                        conversation = dms.conversations.value.firstOrNull { it.id == channelId }
+                    }
+                    conversation?.participants.orEmpty().map { MentionCandidate(it, it.username ?: "Unknown") }
+                }
+            }
+            setMentionCandidates(users.ifEmpty { fallbackMentionCandidates() })
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            setMentionCandidates(fallbackMentionCandidates())
+        } finally {
+            mentionLoading = false
+            updateMentionSuggestions()
+        }
+    }
+
+    private fun fallbackMentionCandidates(): List<MentionCandidate> =
+        (store.messages.value.mapNotNull { it.author } + listOfNotNull(auth.currentUser.value))
+            .distinctBy { it.id }
+            .map { MentionCandidate(it, it.username ?: "Unknown") }
+
+    private fun setMentionCandidates(candidates: List<MentionCandidate>) {
+        mentionCandidates = candidates
+            .filter { it.user.username?.isNotBlank() == true && !blocks.isBlocked(it.user.id) }
+            .distinctBy { it.user.id }
+            .sortedBy { it.displayName.lowercase() }
+        updateMentionSuggestions()
+    }
+
+    private fun updateMentionSuggestions() {
+        val mention = activeMention(draft)
+        currentMention = mention
+        mentionMenuVisible = mention != null
+        if (mention == null) {
+            mentionSuggestions = emptyList()
+            return
+        }
+        val query = mention.query.lowercase()
+        mentionSuggestions = mentionCandidates.asSequence()
+            .filter { candidate ->
+                query.isEmpty() ||
+                    candidate.displayName.contains(query, ignoreCase = true) ||
+                    candidate.user.username.orEmpty().contains(query, ignoreCase = true)
+            }
+            .take(8)
+            .toList()
+    }
+
+    private fun dismissMentionMenu() {
+        currentMention = null
+        mentionMenuVisible = false
+        mentionSuggestions = emptyList()
+    }
+
+    private companion object {
+        const val MESSAGE_REFRESH_MS = 15_000L
+    }
 }
+
+data class MentionCandidate(
+    val user: User,
+    val displayName: String,
+)
 
 /**
  * Recomputes reaction tallies to exclude blocked users, so a blocked user can't

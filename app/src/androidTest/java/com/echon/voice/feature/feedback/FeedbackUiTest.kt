@@ -20,6 +20,8 @@ import com.echon.voice.R
 import com.echon.voice.core.network.EchonApi
 import com.echon.voice.core.push.MessageNotifier
 import com.echon.voice.feature.chat.Composer
+import com.echon.voice.feature.chat.MentionCandidate
+import com.echon.voice.feature.chat.MentionSuggestions
 import com.echon.voice.feature.chat.MessageRow
 import com.echon.voice.feature.invites.CreateInviteSheet
 import com.echon.voice.feature.invites.InviteViewModel
@@ -53,6 +55,24 @@ class FeedbackUiTest {
         compose.onAllNodesWithText("First\n\n\nSecond").assertCountEquals(2)
         compose.onNodeWithContentDescription("Send").performClick()
         compose.runOnIdle { assertEquals("First\n\n\nSecond", sent) }
+    }
+
+    @Test fun mentionPickerShowsMembersAndSelectsOne() {
+        val candidate = MentionCandidate(User("user-1", username = "joseph"), "Joseph")
+        var selected: MentionCandidate? = null
+        compose.setContent {
+            MaterialTheme {
+                MentionSuggestions(
+                    visible = true,
+                    loading = false,
+                    suggestions = listOf(candidate),
+                    onSelect = { selected = it },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Joseph").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(candidate, selected) }
     }
 
     @Test fun voiceOnlyServerCanGenerateAndCopyInvite() {

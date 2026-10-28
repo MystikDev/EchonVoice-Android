@@ -12,6 +12,21 @@ import org.junit.Test
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 class UploadCompatibilityTest {
+    @Test fun cachedConversationReconcileMergesMessagesMissedByWebSocket() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody("""{"messages":[{"id":"old","channel_id":"channel","content":"old"}]}"""))
+            server.enqueue(MockResponse().setBody("""{"messages":[{"id":"old","channel_id":"channel","content":"old"},{"id":"new","channel_id":"channel","content":"new"}]}"""))
+            val api = retrofit2.Retrofit.Builder().baseUrl(server.url("/"))
+                .addConverterFactory(EchonJson.asConverterFactory("application/json".toMediaType())).build().create(EchonApi::class.java)
+            val store = MessageStore(api, "channel", ChatChannelKind.SERVER)
+
+            store.loadInitial()
+            assertEquals(listOf("old"), store.messages.value.map { it.id })
+            store.reconcileLatest()
+            assertEquals(listOf("old", "new"), store.messages.value.map { it.id })
+        }
+    }
+
     @Test fun profileImagesStayOnEchonUploadsAndAllowClear() {
         for (url in listOf("", "/uploads/avatar/a.png", "https://echon-voice.com/uploads/avatar/a.png")) assertTrue(url, isEchonUploadUrl(url))
         for (url in listOf("https://evil.test/uploads/a.png", "//evil.test/uploads/a.png", "http://echon-voice.com/uploads/a.png", "/uploads/../private", "/uploads/%2e%2e/private", "/uploads/"+"x".repeat(512))) assertFalse(url, isEchonUploadUrl(url))

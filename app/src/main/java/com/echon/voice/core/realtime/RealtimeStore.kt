@@ -61,7 +61,8 @@ class RealtimeStore @Inject constructor(
     private val channelRefreshJobs = mutableMapOf<String, Job>()
     private var channelAccessJob: Job? = null
     private var consumeJob: Job? = null
-    private var reconcileJob: Job? = null
+    private var messageReconcileJob: Job? = null
+    private var metadataReconcileJob: Job? = null
     private val myId: String? get() = auth.currentUser.value?.id
 
     private var lastTypingSentAt = 0L
@@ -87,8 +88,10 @@ class RealtimeStore @Inject constructor(
         consumeJob = null
         channelAccessJob?.cancelAndJoin()
         channelAccessJob = null
-        reconcileJob?.cancelAndJoin()
-        reconcileJob = null
+        messageReconcileJob?.cancelAndJoin()
+        messageReconcileJob = null
+        metadataReconcileJob?.cancelAndJoin()
+        metadataReconcileJob = null
         channelRefreshJobs.values.forEach { it.cancel() }
         channelRefreshJobs.clear()
         ws.stop()
@@ -105,9 +108,19 @@ class RealtimeStore @Inject constructor(
     }
 
     suspend fun joinAllTextChannels() {
+        joinAllServerTextChannels()
+        joinDMChannels()
+    }
+
+    private fun joinAllServerTextChannels() {
         servers.servers.value.forEach { server ->
             servers.channelsFor(server.id).filter { it.type == ChannelKind.TEXT }.forEach { ws.join(it.id) }
         }
+    }
+
+    /** DM conversations are channels too and require the same ready-time join. */
+    suspend fun joinDMChannels() {
+        dms.conversations.value.forEach { ws.join(it.id) }
     }
 
     fun channelOpened(channelId: String) {
@@ -152,12 +165,13 @@ class RealtimeStore @Inject constructor(
         when (event) {
             is WsEvent.SocketConnected -> {
                 _isConnected.value = true
-                reconcileJob?.cancel()
-                reconcileJob = scope.launch {
-                    joinAllTextChannels()
+                messageReconcileJob?.cancel()
+                messageReconcileJob = scope.launch {
+                    // Do not share this job with Ready metadata work: Ready normally
+                    // follows immediately and used to cancel this REST reconciliation.
                     try { openChannelId?.let { chat.store(it).reconcileLatest() } }
                     catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                    catch (_: Exception) { /* Permission loss clears the store; transient failure can retry. */ }
+                    catch (_: Exception) { /* Foreground polling retries transient failures. */ }
                 }
             }
             is WsEvent.SocketDisconnected -> {
@@ -167,15 +181,31 @@ class RealtimeStore @Inject constructor(
             // Ready follows server registration; querying on TCP open can predate presence.
             is WsEvent.Ready -> {
                 presenceStore.connect()
-                reconcileJob?.cancel()
-                reconcileJob = scope.launch {
+                // Restore everything already requested immediately; this includes an
+                // open DM that may not be present in a stale/failed REST snapshot.
+                ws.rejoinAll()
+                metadataReconcileJob?.cancel()
+                metadataReconcileJob = scope.launch {
                     try {
-                        servers.loadServers()
-                        servers.servers.value.forEach { servers.loadChannels(it.id) }
-                        joinAllTextChannels()
+                        // Server channels and DMs are independent. Refresh DM ids in
+                        // parallel so a large server list cannot delay DM delivery.
+                        launch {
+                            try { dms.load() }
+                            catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                            catch (_: Exception) { /* Join cached conversations below. */ }
+                            joinDMChannels()
+                        }
+
+                        try {
+                            servers.loadServers()
+                            servers.servers.value.forEach { servers.loadChannels(it.id) }
+                        } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                        catch (_: Exception) { /* Join the cached channel list below. */ }
+
+                        joinAllServerTextChannels()
                         voice.refresh()
                     } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                    catch (_: Exception) { /* Next Ready or selection reconciles again. */ }
+                    catch (_: Exception) { /* Next Ready or foreground refresh retries. */ }
                 }
             }
             is WsEvent.ChannelAccessChanged -> {
@@ -204,7 +234,17 @@ class RealtimeStore @Inject constructor(
                 val kind = if (event.message.channelKind == "dm") ChatChannelKind.DM else ChatChannelKind.SERVER
                 chat.store(channelId, kind).applyRemote(event.message)
                 clearTyping(event.message.author?.id, channelId)
-                if (kind == ChatChannelKind.DM) dms.touch(channelId, event.message.createdAt)
+                if (kind == ChatChannelKind.DM && !dms.touch(channelId, event.message.createdAt)) {
+                    // A DM created on another client may not exist in our cached list.
+                    // Pull it in and subscribe so all following messages stay realtime.
+                    scope.launch {
+                        try {
+                            dms.load()
+                            joinDMChannels()
+                        } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                        catch (_: Exception) { /* Ready or the DMs tab retries. */ }
+                    }
+                }
                 if (channelId != openChannelId && event.message.author?.id != myId) {
                     _unreadChannelIds.update { it + channelId }
                 }

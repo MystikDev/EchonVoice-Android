@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,6 +35,7 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -53,10 +56,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.echon.voice.feature.moderation.ReportSheet
 import com.echon.voice.feature.moderation.ReportTarget
 import com.echon.voice.model.Message
+import com.echon.voice.model.Attachment
+import com.echon.voice.core.designsystem.Avatar
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.awaitCancellation
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -75,10 +84,14 @@ fun ChatScreen(
 
     var actionTarget by remember { mutableStateOf<Message?>(null) }
     var reportTarget by remember { mutableStateOf<Message?>(null) }
+    var expandedImage by remember { mutableStateOf<Attachment?>(null) }
 
-    androidx.compose.runtime.DisposableEffect(Unit) {
-        viewModel.onEnter()
-        onDispose { viewModel.onLeave() }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(viewModel, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.onEnter()
+            try { awaitCancellation() } finally { viewModel.onLeave() }
+        }
     }
 
     // Keep the newest message in view as new ones arrive.
@@ -150,6 +163,12 @@ fun ChatScreen(
                 TypingIndicator(typing)
                 ContextBanner(viewModel)
                 PendingChips(viewModel)
+                MentionSuggestions(
+                    visible = viewModel.mentionMenuVisible,
+                    loading = viewModel.mentionLoading,
+                    suggestions = viewModel.mentionSuggestions,
+                    onSelect = viewModel::selectMention,
+                )
                 Composer(
                     draft = viewModel.draft,
                     onDraftChange = viewModel::onDraftChange,
@@ -195,6 +214,7 @@ fun ChatScreen(
                         onRetry = { viewModel.retry(message) },
                         onDiscard = { viewModel.discard(message) },
                         onTapAuthor = { message.author?.let(onOpenProfile) },
+                        onOpenImage = { expandedImage = it },
                     )
                 }
             }
@@ -218,6 +238,10 @@ fun ChatScreen(
 
     reportTarget?.let { target ->
         ReportSheet(target = ReportTarget.Message(target.id), onDismiss = { reportTarget = null })
+    }
+
+    expandedImage?.let { attachment ->
+        FullScreenImageViewer(attachment = attachment, onDismiss = { expandedImage = null })
     }
 }
 
@@ -267,6 +291,62 @@ private fun PendingChips(viewModel: ChatViewModel) {
                 Text(att.filename, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                 IconButton(onClick = { viewModel.removePending(att) }, modifier = Modifier.size(20.dp)) {
                     Icon(Icons.Default.Close, contentDescription = "Remove", modifier = Modifier.size(14.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun MentionSuggestions(
+    visible: Boolean,
+    loading: Boolean,
+    suggestions: List<MentionCandidate>,
+    onSelect: (MentionCandidate) -> Unit,
+) {
+    if (!visible) return
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 3.dp,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 2.dp),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        when {
+            loading && suggestions.isEmpty() -> Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                Text("Loading members…", style = MaterialTheme.typography.bodySmall)
+            }
+            suggestions.isEmpty() -> Text(
+                "No matching users",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(12.dp),
+            )
+            else -> LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp)) {
+                items(suggestions, key = { it.user.id }) { candidate ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(candidate) }
+                            .padding(horizontal = 12.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Avatar(user = candidate.user, size = 30.dp)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(candidate.displayName, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                            Text(
+                                "@${candidate.user.username.orEmpty()}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                            )
+                        }
+                    }
                 }
             }
         }

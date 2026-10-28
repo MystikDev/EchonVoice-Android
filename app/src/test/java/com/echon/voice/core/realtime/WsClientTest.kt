@@ -24,6 +24,45 @@ import org.junit.Test
 import java.lang.reflect.Proxy
 
 class WsClientTest {
+    @Test fun desiredChannelsCanBeRejoinedAfterReadyInsteadOfDuringHandshake() = runBlocking {
+        val server = MockWebServer()
+        val joined = CompletableDeferred<String>()
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                webSocket.send("""{"type":"ready"}""")
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                if (text.contains("channel:join")) joined.complete(text)
+            }
+        }))
+        server.start()
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            chain.proceed(chain.request().newBuilder().url(server.url("/v1/ws")).build())
+        }.build()
+        val api = Proxy.newProxyInstance(EchonApi::class.java.classLoader, arrayOf(EchonApi::class.java)) { _, method, _ ->
+            check(method.name == "wsTicket")
+            TicketResponse("ticket")
+        } as EchonApi
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val ws = WsClient(api, client, com.echon.voice.core.network.SessionStore(object : com.echon.voice.core.storage.TokenStorage {
+            override var accessToken: String? = "access"
+            override var refreshToken: String? = "refresh"
+            override fun clear() { accessToken = null; refreshToken = null }
+        }), scope)
+        val consumer = launch(start = CoroutineStart.UNDISPATCHED) {
+            ws.events.collect { if (it == WsEvent.Ready) ws.rejoinAll() }
+        }
+        try {
+            ws.join("dm-channel") // Desired before the socket is ready.
+            ws.start()
+            val frame = withTimeout(5_000) { joined.await() }
+            assertTrue(frame.contains("\"channel_id\":\"dm-channel\""))
+        } finally {
+            ws.stop(); consumer.cancel(); scope.cancel()
+            client.dispatcher.executorService.shutdown(); client.connectionPool.evictAll(); server.shutdown()
+        }
+    }
+
     @Test fun revokedCloseAndRejectedHandshakeClearSessionAndNeverReconnect() = runBlocking {
         for (mode in listOf("revoked-close", "rejected-handshake", "disabled-account")) {
             val handshakeRejected = mode == "rejected-handshake"
