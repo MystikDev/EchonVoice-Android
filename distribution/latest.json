@@ -1,9 +1,9 @@
 {
-  "version_code": 32,
-  "version_name": "2.0.31",
+  "version_code": 33,
+  "version_name": "2.0.32",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Fixed real-time Direct Message and channel refresh, added uncropped full-screen images, made links and YouTube previews tappable, and added @ mention suggestions.",
-  "sha256": "38f60bfa7637473dd07b5976b5ab4f75a989a46faf8b88d76b89973638a73059"
+  "sha256": "451fc685c115e361f77e0102dc7542746e05e77c3ef38459267be0dcfd5994ef"
 }
