@@ -45,7 +45,7 @@ class RefreshCookieInterceptor @Inject constructor(
 
     internal companion object {
         private const val COOKIE_NAME = "refresh_token"
-        private val TOKEN_ENDPOINTS = setOf("/v1/auth/login", "/v1/auth/register", "/v1/auth/refresh")
+        private val TOKEN_ENDPOINTS = setOf("/v1/auth/login", "/v1/auth/login/verify", "/v1/auth/register", "/v1/auth/refresh")
 
         /** Pull `<value>` out of `refresh_token=<value>; HttpOnly; …`. */
         fun parseRefreshToken(setCookie: String): String? {

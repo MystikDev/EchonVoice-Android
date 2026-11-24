@@ -13,6 +13,8 @@ import com.echon.voice.model.OpenDmRequest
 import com.echon.voice.model.EditMessageRequest
 import com.echon.voice.model.LoginRequest
 import com.echon.voice.model.LoginResponse
+import com.echon.voice.model.LoginStartResponse
+import com.echon.voice.model.LoginVerificationRequest
 import com.echon.voice.model.MeResponse
 import com.echon.voice.model.Message
 import com.echon.voice.model.MessagesResponse
@@ -46,7 +48,11 @@ interface EchonApi {
 
     @Headers("X-Echon-No-Auth: true")
     @POST("v1/auth/login")
-    suspend fun login(@Body body: LoginRequest): LoginResponse
+    suspend fun login(@Body body: LoginRequest): LoginStartResponse
+
+    @Headers("X-Echon-No-Auth: true")
+    @POST("v1/auth/login/verify")
+    suspend fun verifyLogin(@Body body: LoginVerificationRequest): LoginResponse
 
     @Headers("X-Echon-No-Auth: true")
     @GET("v1/auth/captcha")

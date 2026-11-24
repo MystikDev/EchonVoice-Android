@@ -38,6 +38,24 @@ export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
 The live login check in `TlsPinningTest` runs only when `ECHON_TEST_EMAIL` /
 `ECHON_TEST_PASSWORD` are exported (test-account creds are never committed).
 
+## Email two-step sign-in
+
+`POST /v1/auth/login` may return either the normal token response or
+`{"two_factor_required":true,"method":"email","challenge_id":"…"}`.
+The latter opens the verification screen without adopting a session or fetching
+`/v1/me`. The app submits `{challenge_id, code}` to
+`POST /v1/auth/login/verify`, then adopts the returned session, including the
+refresh token from its HttpOnly cookie. Wrong or expired codes remain on the
+verification screen with a retry message. Resending repeats login with the
+original credentials and replaces the pending challenge with the new one.
+Passwords, codes, and challenges are held only in memory and cleared when
+sign-in succeeds or the user returns to the credentials screen. The email field
+remains available for convenience.
+
+`LoginSessionTest` covers both response shapes, verification request encoding,
+malformed responses, rejected codes, and cookie persistence. `LoginViewModelTest`
+covers retry/resend, duplicate submission guards, network failures, and reset.
+
 ## Security notes
 - TLS pinning fails closed; pins the long-lived ISRG roots, not rotating intermediates.
 - No payments/donate UI in the mobile client (store-policy parity with iOS).

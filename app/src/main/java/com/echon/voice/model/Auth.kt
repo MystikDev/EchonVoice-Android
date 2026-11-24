@@ -26,7 +26,24 @@ data class RegisterRequest(
     val captchaToken: String? = null,
 )
 
-/** POST /v1/auth/login and register → {token, refresh_token, user}. */
+/** Login can return an email challenge instead of issuing a session. */
+@Serializable
+data class LoginStartResponse(
+    val token: String? = null,
+    val refreshToken: String? = null,
+    val user: User? = null,
+    val twoFactorRequired: Boolean = false,
+    val method: String? = null,
+    val challengeId: String? = null,
+)
+
+/** Kept in memory only until verification succeeds or the user starts over. */
+data class EmailLoginChallenge(val id: String)
+
+@Serializable
+data class LoginVerificationRequest(val challengeId: String, val code: String)
+
+/** Successful login verification or registration → {token, refresh_token, user}. */
 @Serializable
 data class LoginResponse(
     val token: String,

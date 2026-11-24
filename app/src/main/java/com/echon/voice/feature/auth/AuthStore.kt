@@ -5,7 +5,7 @@ import com.echon.voice.core.network.ApiException
 import com.echon.voice.core.network.EchonApi
 import com.echon.voice.core.network.SessionStore
 import com.echon.voice.core.network.apiCall
-import com.echon.voice.model.LoginRequest
+import com.echon.voice.model.EmailLoginChallenge
 import com.echon.voice.model.LoginResponse
 import com.echon.voice.model.RegisterRequest
 import com.echon.voice.model.User
@@ -31,6 +31,7 @@ import javax.inject.Singleton
 class AuthStore @Inject constructor(
     private val api: EchonApi,
     private val session: SessionStore,
+    private val loginSession: LoginSession,
     private val voiceCalls: VoiceCallStore,
     private val accountData: com.echon.voice.core.storage.AccountData,
     private val realtime: dagger.Lazy<com.echon.voice.core.realtime.RealtimeStore>,
@@ -98,9 +99,15 @@ class AuthStore @Inject constructor(
     }
 
     /** @throws ApiException on failure (surfaced by the caller's screen). */
-    suspend fun logIn(email: String, password: String) {
-        val response = apiCall { api.login(LoginRequest(email = email, password = password)) }
-        apiCall { storeSession(response) }
+    suspend fun logIn(email: String, password: String): EmailLoginChallenge? {
+        val challenge = loginSession.logIn(email, password)
+        if (challenge != null) return challenge
+        refreshMe()
+        return null
+    }
+
+    suspend fun verifyLogin(challengeId: String, code: String) {
+        loginSession.verify(challengeId, code)
         refreshMe()
     }
 
