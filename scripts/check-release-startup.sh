@@ -39,9 +39,11 @@ finish() {
 trap finish EXIT
 
 bounded 30 adb wait-for-device
-# Install all bytes before launching. Incremental installs made CI startup depend
-# on the host-side file server and could report success before resources were ready.
-bounded 120 adb install --no-incremental -r "$apk"
+# Push the whole APK before invoking Package Manager. --no-incremental alone
+# still permits streaming; select push-then-install explicitly after two ADB
+# installation timeouts on API 24, both after all instrumentation tests passed.
+# Keep this bounded and retain every startup/process/UI assertion below.
+bounded 180 adb install --no-streaming --no-incremental -r "$apk"
 api=$(bounded 10 adb shell getprop ro.build.version.sdk | tr -d '\r')
 if [ "$api" -ge 33 ]; then
     bounded 10 adb shell pm grant "$package" android.permission.POST_NOTIFICATIONS
