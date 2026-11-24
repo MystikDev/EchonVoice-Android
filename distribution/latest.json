@@ -1,9 +1,9 @@
 {
-  "version_code": 33,
-  "version_name": "2.0.32",
+  "version_code": 35,
+  "version_name": "2.0.34",
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
   "notes": "Added email two-step sign-in with verification codes, resend and retry controls, and persistent sessions after verification. Notifications now use the Echon icon.",
-  "sha256": "451fc685c115e361f77e0102dc7542746e05e77c3ef38459267be0dcfd5994ef"
+  "sha256": "4c988272a8bfedf492d9bf5ce16a6eff8022637c7bd8ec11818d9f543d334e4f"
 }
