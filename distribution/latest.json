@@ -4,6 +4,6 @@
   "apk_url": "https://github.com/MystikDev/EchonVoice-Android/releases/latest/download/echon-release.apk",
   "min_supported_version_code": 1,
   "mandatory": false,
-  "notes": "Added email two-step sign-in with verification codes, resend and retry controls, and persistent sessions after verification.",
+  "notes": "Added email two-step sign-in with verification codes, resend and retry controls, and persistent sessions after verification. Notifications now use the Echon icon.",
   "sha256": "451fc685c115e361f77e0102dc7542746e05e77c3ef38459267be0dcfd5994ef"
 }

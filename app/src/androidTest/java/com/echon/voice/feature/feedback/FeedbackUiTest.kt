@@ -112,7 +112,7 @@ class FeedbackUiTest {
         compose.onNodeWithText("Retry push registration").assertIsNotEnabled()
     }
 
-    @Test fun notificationUsesTransparentBellAndPreservesMultilinePreview() {
+    @Test fun notificationUsesEchonMarkAndPreservesMultilinePreview() {
         val context = compose.activity
         val manager = context.getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= 33) {

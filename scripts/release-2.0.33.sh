@@ -32,6 +32,8 @@ expected = {
     'app/src/test/java/com/echon/voice/feature/auth/LoginSessionTest.kt',
     'app/src/test/java/com/echon/voice/feature/auth/LoginViewModelTest.kt',
     'app/src/androidTest/java/com/echon/voice/feature/auth/LoginScreenTest.kt',
+    'app/src/main/res/drawable/ic_notification.xml',
+    'app/src/androidTest/java/com/echon/voice/feature/feedback/FeedbackUiTest.kt',
     'scripts/release-2.0.33.sh',
 }
 tracked = subprocess.check_output(['git', 'diff', '--name-only', '-z']).decode().split('\0')
@@ -59,9 +61,11 @@ git add README.md app/build.gradle.kts distribution/latest.json \
   app/src/test/java/com/echon/voice/feature/auth/LoginSessionTest.kt \
   app/src/test/java/com/echon/voice/feature/auth/LoginViewModelTest.kt \
   app/src/androidTest/java/com/echon/voice/feature/auth/LoginScreenTest.kt \
+  app/src/main/res/drawable/ic_notification.xml \
+  app/src/androidTest/java/com/echon/voice/feature/feedback/FeedbackUiTest.kt \
   scripts/release-2.0.33.sh
 if ! git diff --cached --quiet; then
-  git commit -m 'Support email two-step sign-in in Android 2.0.33'
+  git commit -m 'Prepare Android 2.0.33 with two-step sign-in and Echon notifications'
 fi
 release_sha=$(git rev-parse HEAD)
 if git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null; then

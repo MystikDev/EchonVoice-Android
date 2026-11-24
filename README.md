@@ -56,6 +56,11 @@ remains available for convenience.
 malformed responses, rejected codes, and cookie persistence. `LoginViewModelTest`
 covers retry/resend, duplicate submission guards, network failures, and reset.
 
+Notification small icons use the transparent, monochrome Echon badge (a dot
+with three arcs radiating to the right), shared by message, call, update, and
+Firebase fallback notifications. The glyph matches the project's existing badge
+artwork and omits the launcher tile so Android can apply its system tint.
+
 ## Security notes
 - TLS pinning fails closed; pins the long-lived ISRG roots, not rotating intermediates.
 - No payments/donate UI in the mobile client (store-policy parity with iOS).
